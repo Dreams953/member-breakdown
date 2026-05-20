@@ -10,24 +10,45 @@
   body { font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; background: #f0f2f5; color: #1a1a2e; }
   header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
   header h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: .05em; }
-  header span { font-size: .8rem; opacity: .7; }
-  .filter-bar { background: white; padding: 12px 24px; display: flex; gap: 16px; align-items: center; box-shadow: 0 1px 4px rgba(0,0,0,.1); flex-wrap: wrap; }
-  .filter-bar label { font-size: .8rem; color: #666; font-weight: 600; }
-  .filter-bar select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: .85rem; background: white; cursor: pointer; }
-  .filter-bar select:focus { outline: none; border-color: #4f46e5; }
-  .filter-bar button { padding: 6px 14px; background: #4f46e5; color: white; border: none; border-radius: 6px; font-size: .8rem; cursor: pointer; font-weight: 600; }
-  .filter-bar button:hover { background: #3730a3; }
+  header span.date { font-size: .8rem; opacity: .7; }
+  /* Filter bar */
+  .filter-bar { background: white; padding: 8px 24px 10px; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+  .filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 0; }
+  .filter-row + .filter-row { border-top: 1px solid #f0f0f0; margin-top: 6px; padding-top: 8px; }
+  .filter-label { font-size: .78rem; color: #888; font-weight: 700; white-space: nowrap; min-width: 2em; }
+  .filter-sep { color: #c0bfff; font-size: .9rem; padding: 0 2px; }
+  .reset-btn { padding: 6px 14px; background: #4f46e5; color: white; border: none; border-radius: 6px; font-size: .8rem; cursor: pointer; font-weight: 600; margin-left: auto; }
+  .reset-btn:hover { background: #3730a3; }
+  /* MultiSelect */
+  .ms-wrapper { position: relative; display: inline-block; }
+  .ms-btn { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: .82rem; background: white; cursor: pointer; white-space: nowrap; max-width: 210px; font-family: inherit; color: #555; }
+  .ms-btn-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+  .ms-btn-arrow { color: #bbb; font-size: .65rem; flex-shrink: 0; }
+  .ms-btn.ms-active { border-color: #4f46e5; color: #4f46e5; background: #eef2ff; }
+  .ms-btn.ms-active .ms-btn-arrow { color: #4f46e5; }
+  .ms-dropdown { position: absolute; top: calc(100% + 4px); left: 0; min-width: 190px; max-width: 280px; background: white; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.13); z-index: 9999; overflow: hidden; }
+  .ms-dropdown.ms-hidden { display: none; }
+  .ms-hd { display: flex; gap: 6px; padding: 7px 10px; border-bottom: 1px solid #f0f0f0; background: #fafafa; }
+  .ms-hd button { font-size: .72rem; padding: 2px 8px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; background: white; color: #555; font-family: inherit; }
+  .ms-hd button:hover { background: #efefef; }
+  .ms-items { max-height: 230px; overflow-y: auto; }
+  .ms-item { display: flex; align-items: center; gap: 8px; padding: 7px 12px; cursor: pointer; font-size: .83rem; color: #333; }
+  .ms-item:hover { background: #f5f5ff; }
+  .ms-item input[type=checkbox] { accent-color: #4f46e5; flex-shrink: 0; cursor: pointer; }
+  .ms-empty { padding: 14px; font-size: .8rem; color: #bbb; text-align: center; }
+  /* Cards */
   .container { padding: 16px 24px; max-width: 1600px; margin: 0 auto; }
   .cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
   .card { background: white; border-radius: 10px; padding: 16px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); border-left: 4px solid #4f46e5; }
-  .card .label { font-size: .75rem; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
-  .card .value { font-size: 2rem; font-weight: 800; color: #1a1a2e; margin-top: 4px; }
+  .card .lbl { font-size: .75rem; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  .card .val { font-size: 2rem; font-weight: 800; color: #1a1a2e; margin-top: 4px; }
   .card .sub { font-size: .75rem; color: #aaa; margin-top: 2px; }
   .card:nth-child(2) { border-left-color: #3b82f6; }
   .card:nth-child(3) { border-left-color: #ec4899; }
   .card:nth-child(4) { border-left-color: #10b981; }
   .card:nth-child(5) { border-left-color: #f59e0b; }
-  .charts-grid { display: grid; grid-template-columns: 1fr 2fr 2fr; gap: 16px; margin-bottom: 16px; }
+  /* Charts */
+  .charts-grid  { display: grid; grid-template-columns: 1fr 2fr 2fr; gap: 16px; margin-bottom: 16px; }
   .charts-grid2 { display: grid; grid-template-columns: 2fr 1fr 2fr; gap: 16px; }
   .chart-box { background: white; border-radius: 10px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
   .chart-box h3 { font-size: .85rem; font-weight: 700; color: #444; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
@@ -35,7 +56,7 @@
   .tall canvas { max-height: 320px; }
   #count-badge { font-size: .75rem; background: #eef2ff; color: #4f46e5; padding: 2px 8px; border-radius: 10px; margin-left: 8px; font-weight: 600; }
   @media (max-width: 900px) {
-    .cards { grid-template-columns: repeat(3, 1fr); }
+    .cards { grid-template-columns: repeat(3,1fr); }
     .charts-grid, .charts-grid2 { grid-template-columns: 1fr; }
     canvas { max-height: 200px; }
   }
@@ -45,36 +66,40 @@
 
 <header>
   <h1>人員構成ダッシュボード<span id="count-badge">219名</span></h1>
-  <span>基準日：2026年4月9日</span>
+  <span class="date">基準日：2026年4月9日</span>
 </header>
 
 <div class="filter-bar">
-  <label>局・組織</label>
-  <select id="f-org2"><option value="">すべて</option></select>
-  <label>性別</label>
-  <select id="f-gender"><option value="">すべて</option><option value="男性">男性</option><option value="女性">女性</option></select>
-  <label>等級</label>
-  <select id="f-grade"><option value="">すべて</option></select>
-  <label>職位</label>
-  <select id="f-position"><option value="">すべて</option></select>
-  <button onclick="resetFilters()">リセット</button>
+  <div class="filter-row">
+    <span class="filter-label">組織</span>
+    <div id="ms-org2"></div>
+    <span class="filter-sep">›</span>
+    <div id="ms-org4"></div>
+    <span class="filter-sep">›</span>
+    <div id="ms-org5"></div>
+  </div>
+  <div class="filter-row">
+    <span class="filter-label">属性</span>
+    <div id="ms-gender"></div>
+    <div id="ms-grade"></div>
+    <div id="ms-position"></div>
+    <button class="reset-btn" onclick="resetFilters()">リセット</button>
+  </div>
 </div>
 
 <div class="container">
   <div class="cards">
-    <div class="card"><div class="label">総人数</div><div class="value" id="c-total">-</div><div class="sub">全メンバー</div></div>
-    <div class="card"><div class="label">男性</div><div class="value" id="c-male">-</div><div class="sub" id="c-male-r">-</div></div>
-    <div class="card"><div class="label">女性</div><div class="value" id="c-female">-</div><div class="sub" id="c-female-r">-</div></div>
-    <div class="card"><div class="label">平均年齢</div><div class="value" id="c-avgage">-</div><div class="sub">歳</div></div>
-    <div class="card"><div class="label">平均勤続</div><div class="value" id="c-tenure">-</div><div class="sub">年</div></div>
+    <div class="card"><div class="lbl">総人数</div><div class="val" id="c-total">-</div><div class="sub">全メンバー</div></div>
+    <div class="card"><div class="lbl">男性</div><div class="val" id="c-male">-</div><div class="sub" id="c-male-r">-</div></div>
+    <div class="card"><div class="lbl">女性</div><div class="val" id="c-female">-</div><div class="sub" id="c-female-r">-</div></div>
+    <div class="card"><div class="lbl">平均年齢</div><div class="val" id="c-avgage">-</div><div class="sub">歳</div></div>
+    <div class="card"><div class="lbl">平均勤続</div><div class="val" id="c-tenure">-</div><div class="sub">年</div></div>
   </div>
-
   <div class="charts-grid">
     <div class="chart-box"><h3>性別構成</h3><canvas id="ch-gender"></canvas></div>
     <div class="chart-box tall"><h3>年代別・性別分布（人口ピラミッド）</h3><canvas id="ch-pyramid"></canvas></div>
     <div class="chart-box tall"><h3>局別人数（性別内訳）</h3><canvas id="ch-org2"></canvas></div>
   </div>
-
   <div class="charts-grid2" style="margin-top:0;">
     <div class="chart-box"><h3>等級別分布（性別内訳）</h3><canvas id="ch-grade"></canvas></div>
     <div class="chart-box"><h3>職位別分布</h3><canvas id="ch-position"></canvas></div>
@@ -88,165 +113,220 @@ const RAW = [{"id": "12E94F6", "gender": "女性", "age": 63, "age5": 60, "dept_
 const GRADE_ORDER = ['M1','M2','M3','M4','S1','S2','S3'];
 const AGE_LABELS = ['20代前半','20代後半','30代前半','30代後半','40代前半','40代後半','50代前半','50代後半','60代前半','60代後半'];
 const AGE_STEPS  = [20,25,30,35,40,45,50,55,60,65,70];
-const MALE_COLOR   = 'rgba(59,130,246,0.85)';
-const FEMALE_COLOR = 'rgba(236,72,153,0.85)';
-const MALE_BG      = 'rgba(59,130,246,0.2)';
-const FEMALE_BG    = 'rgba(236,72,153,0.2)';
-const ORG_COLORS   = ['#6366f1','#8b5cf6','#ec4899','#f43f5e','#f97316','#eab308','#22c55e'];
+const MALE_C   = 'rgba(59,130,246,0.85)';
+const FEMALE_C = 'rgba(236,72,153,0.85)';
+const ORG_COLORS = ['#6366f1','#8b5cf6','#ec4899','#f43f5e','#f97316','#eab308','#22c55e'];
 
-// populate filters
-const orgs = [...new Set(RAW.map(r=>r.org2).filter(Boolean))].sort();
-orgs.forEach(o=>{ let op=document.createElement('option'); op.value=o; op.textContent=o; document.getElementById('f-org2').append(op); });
-GRADE_ORDER.forEach(g=>{ if(RAW.some(r=>r.grade===g)){ let op=document.createElement('option'); op.value=g; op.textContent=g; document.getElementById('f-grade').append(op); } });
-const positions = [...new Set(RAW.map(r=>r.position).filter(Boolean))].sort();
-positions.forEach(p=>{ let op=document.createElement('option'); op.value=p; op.textContent=p; document.getElementById('f-position').append(op); });
+class MultiSelect {
+  constructor(containerId, placeholder, onChange) {
+    this.selected = new Set();
+    this.options = [];
+    this.placeholder = placeholder;
+    this.onChange = onChange;
+    const container = document.getElementById(containerId);
+    this.wrapper = document.createElement('div');
+    this.wrapper.className = 'ms-wrapper';
+    this.btn = document.createElement('button');
+    this.btn.type = 'button';
+    this.btn.className = 'ms-btn';
+    this.btnText = document.createElement('span');
+    this.btnText.className = 'ms-btn-text';
+    this.btnText.textContent = placeholder;
+    const arrow = document.createElement('span');
+    arrow.className = 'ms-btn-arrow';
+    arrow.textContent = '▾';
+    this.btn.append(this.btnText, arrow);
+    this.dropdown = document.createElement('div');
+    this.dropdown.className = 'ms-dropdown ms-hidden';
+    this.wrapper.append(this.btn, this.dropdown);
+    container.append(this.wrapper);
+    this.btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const hidden = this.dropdown.classList.contains('ms-hidden');
+      document.querySelectorAll('.ms-dropdown').forEach(d => d.classList.add('ms-hidden'));
+      if (hidden) this.dropdown.classList.remove('ms-hidden');
+    });
+    document.addEventListener('click', () => this.dropdown.classList.add('ms-hidden'));
+    this.dropdown.addEventListener('click', e => e.stopPropagation());
+  }
+  setOptions(options, keepSelected = false) {
+    if (!keepSelected) this.selected.clear();
+    else for (const s of [...this.selected]) if (!options.includes(s)) this.selected.delete(s);
+    this.options = [...options];
+    this._render();
+    this._updateBtn();
+  }
+  _render() {
+    this.dropdown.innerHTML = '';
+    if (!this.options.length) {
+      const e = document.createElement('div');
+      e.className = 'ms-empty';
+      e.textContent = '選択肢がありません';
+      this.dropdown.append(e);
+      return;
+    }
+    const hd = document.createElement('div');
+    hd.className = 'ms-hd';
+    const btnAll = document.createElement('button');
+    btnAll.type = 'button'; btnAll.textContent = 'すべて選択';
+    btnAll.onclick = () => { this.options.forEach(o => this.selected.add(o)); this._renderItems(); this._updateBtn(); this.onChange(); };
+    const btnClear = document.createElement('button');
+    btnClear.type = 'button'; btnClear.textContent = 'クリア';
+    btnClear.onclick = () => { this.selected.clear(); this._renderItems(); this._updateBtn(); this.onChange(); };
+    hd.append(btnAll, btnClear);
+    this.itemsEl = document.createElement('div');
+    this.itemsEl.className = 'ms-items';
+    this.dropdown.append(hd, this.itemsEl);
+    this._renderItems();
+  }
+  _renderItems() {
+    this.itemsEl.innerHTML = '';
+    this.options.forEach(opt => {
+      const lbl = document.createElement('label');
+      lbl.className = 'ms-item';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = this.selected.has(opt);
+      cb.onchange = () => { cb.checked ? this.selected.add(opt) : this.selected.delete(opt); this._updateBtn(); this.onChange(); };
+      lbl.append(cb, document.createTextNode(opt));
+      this.itemsEl.append(lbl);
+    });
+  }
+  _updateBtn() {
+    const n = this.selected.size;
+    if (n === 0) { this.btnText.textContent = this.placeholder; this.btn.classList.remove('ms-active'); }
+    else {
+      const items = [...this.selected];
+      this.btnText.textContent = n <= 2 ? items.join('・') : items.slice(0,2).join('・') + ` +${n-2}`;
+      this.btn.classList.add('ms-active');
+    }
+  }
+  getSelected() { return [...this.selected]; }
+  reset() { this.selected.clear(); if (this.itemsEl) this._renderItems(); this._updateBtn(); }
+}
 
-// filter
+const msOrg2     = new MultiSelect('ms-org2',     '局・組織',  onOrg2Change);
+const msOrg4     = new MultiSelect('ms-org4',     '部・室',    onOrg4Change);
+const msOrg5     = new MultiSelect('ms-org5',     '課',        update);
+const msGender   = new MultiSelect('ms-gender',   '性別',      update);
+const msGrade    = new MultiSelect('ms-grade',    '等級',      update);
+const msPosition = new MultiSelect('ms-position', '職位',      update);
+
+const allOrg2 = [...new Set(RAW.map(r=>r.org2).filter(Boolean))].sort();
+const allOrg4 = [...new Set(RAW.map(r=>r.org4).filter(Boolean))].sort();
+const allOrg5 = [...new Set(RAW.map(r=>r.org5).filter(Boolean))].sort();
+const posOrder = ['局長','部長','課長','課長補佐','事務員','養護職員'];
+const allPos  = [...new Set(RAW.map(r=>r.position).filter(Boolean))].sort((a,b)=>(posOrder.indexOf(a)+1||99)-(posOrder.indexOf(b)+1||99));
+
+msOrg2.setOptions(allOrg2);
+msOrg4.setOptions(allOrg4);
+msOrg5.setOptions(allOrg5);
+msGender.setOptions(['男性','女性']);
+msGrade.setOptions(GRADE_ORDER.filter(g=>RAW.some(r=>r.grade===g)));
+msPosition.setOptions(allPos);
+
+function onOrg2Change() {
+  const sel2 = msOrg2.getSelected();
+  const base = sel2.length ? RAW.filter(r=>sel2.includes(r.org2)) : RAW;
+  msOrg4.setOptions([...new Set(base.map(r=>r.org4).filter(Boolean))].sort(), true);
+  onOrg4Change();
+}
+function onOrg4Change() {
+  const sel2 = msOrg2.getSelected(), sel4 = msOrg4.getSelected();
+  const base = RAW.filter(r=>(!sel2.length||sel2.includes(r.org2))&&(!sel4.length||sel4.includes(r.org4)));
+  msOrg5.setOptions([...new Set(base.map(r=>r.org5).filter(Boolean))].sort(), true);
+  update();
+}
+function resetFilters() {
+  msOrg2.reset(); msOrg4.setOptions(allOrg4); msOrg5.setOptions(allOrg5);
+  msGender.reset(); msGrade.reset(); msPosition.reset();
+  update();
+}
 function getFiltered() {
-  const org2 = document.getElementById('f-org2').value;
-  const gender = document.getElementById('f-gender').value;
-  const grade = document.getElementById('f-grade').value;
-  const position = document.getElementById('f-position').value;
-  return RAW.filter(r =>
-    (!org2 || r.org2===org2) &&
-    (!gender || r.gender===gender) &&
-    (!grade || r.grade===grade) &&
-    (!position || r.position===position)
+  const s2=msOrg2.getSelected(), s4=msOrg4.getSelected(), s5=msOrg5.getSelected();
+  const sg=msGender.getSelected(), sgr=msGrade.getSelected(), sp=msPosition.getSelected();
+  return RAW.filter(r=>
+    (!s2.length||s2.includes(r.org2))&&(!s4.length||s4.includes(r.org4))&&(!s5.length||s5.includes(r.org5))&&
+    (!sg.length||sg.includes(r.gender))&&(!sgr.length||sgr.includes(r.grade))&&(!sp.length||sp.includes(r.position))
   );
 }
 
-function resetFilters() {
-  ['f-org2','f-gender','f-grade','f-position'].forEach(id=>document.getElementById(id).value='');
-  update();
-}
-
-['f-org2','f-gender','f-grade','f-position'].forEach(id=>document.getElementById(id).addEventListener('change',update));
-
-// charts
 let charts = {};
-function makeChart(id, cfg) {
-  if(charts[id]) charts[id].destroy();
-  charts[id] = new Chart(document.getElementById(id), cfg);
-}
-
-function count(arr, key, val) { return arr.filter(r=>r[key]===val).length; }
-function avg(arr, key) { const v=arr.map(r=>r[key]).filter(x=>x!=null); return v.length? (v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):'-'; }
+function makeChart(id, cfg) { if(charts[id]) charts[id].destroy(); charts[id]=new Chart(document.getElementById(id),cfg); }
+function cnt(arr,k,v) { return arr.filter(r=>r[k]===v).length; }
+function avg(arr,k) { const v=arr.map(r=>r[k]).filter(x=>x!=null); return v.length?(v.reduce((a,b)=>a+b,0)/v.length).toFixed(1):'-'; }
 
 function update() {
-  const d = getFiltered();
-  const n = d.length;
+  const d = getFiltered(), n = d.length;
   document.getElementById('count-badge').textContent = n+'名';
+  const male=cnt(d,'gender','男性'), female=cnt(d,'gender','女性');
+  document.getElementById('c-total').textContent=n;
+  document.getElementById('c-male').textContent=male;
+  document.getElementById('c-male-r').textContent=n?(male/n*100).toFixed(1)+'%':'-';
+  document.getElementById('c-female').textContent=female;
+  document.getElementById('c-female-r').textContent=n?(female/n*100).toFixed(1)+'%':'-';
+  document.getElementById('c-avgage').textContent=avg(d,'age');
+  const tv=d.map(r=>r.hire_year?2026-r.hire_year:null).filter(x=>x!=null);
+  document.getElementById('c-tenure').textContent=tv.length?(tv.reduce((a,b)=>a+b,0)/tv.length).toFixed(1):'-';
 
-  // cards
-  const male = count(d,'gender','男性'), female = count(d,'gender','女性');
-  document.getElementById('c-total').textContent = n;
-  document.getElementById('c-male').textContent = male;
-  document.getElementById('c-male-r').textContent = n? (male/n*100).toFixed(1)+'%' : '-';
-  document.getElementById('c-female').textContent = female;
-  document.getElementById('c-female-r').textContent = n? (female/n*100).toFixed(1)+'%' : '-';
-  document.getElementById('c-avgage').textContent = avg(d,'age');
-  const tenure2026 = d.map(r=>r.hire_year? 2026-r.hire_year:null);
-  const tv = tenure2026.filter(x=>x!=null);
-  document.getElementById('c-tenure').textContent = tv.length? (tv.reduce((a,b)=>a+b,0)/tv.length).toFixed(1):'-';
-
-  // gender donut
-  makeChart('ch-gender', {
-    type:'doughnut',
-    data:{ labels:['男性','女性'], datasets:[{ data:[male,female], backgroundColor:[MALE_COLOR,FEMALE_COLOR], borderWidth:2 }] },
-    options:{ plugins:{ legend:{ position:'bottom' }, tooltip:{ callbacks:{ label: ctx=>` ${ctx.label}: ${ctx.raw}名 (${n?(ctx.raw/n*100).toFixed(1):0}%)` } } }, cutout:'60%', responsive:true, maintainAspectRatio:true }
+  makeChart('ch-gender',{type:'doughnut',
+    data:{labels:['男性','女性'],datasets:[{data:[male,female],backgroundColor:[MALE_C,FEMALE_C],borderWidth:2}]},
+    options:{plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw}名 (${n?(ctx.raw/n*100).toFixed(1):0}%)`}}},cutout:'60%',responsive:true,maintainAspectRatio:true}
   });
 
-  // pyramid
-  const ageGroups = AGE_STEPS.slice(0,-1).map((min,i)=>{
+  const ag=AGE_STEPS.slice(0,-1).map((min,i)=>{
     const max=AGE_STEPS[i+1];
-    const m = d.filter(r=>r.gender==='男性'&&r.age>=min&&r.age<max).length;
-    const f = d.filter(r=>r.gender==='女性'&&r.age>=min&&r.age<max).length;
-    return {label:AGE_LABELS[i],m,f};
+    return {label:AGE_LABELS[i],m:d.filter(r=>r.gender==='男性'&&r.age>=min&&r.age<max).length,f:d.filter(r=>r.gender==='女性'&&r.age>=min&&r.age<max).length};
   }).reverse();
-  makeChart('ch-pyramid', {
-    type:'bar',
-    data:{ labels:ageGroups.map(g=>g.label),
-      datasets:[
-        { label:'男性', data:ageGroups.map(g=>-g.m), backgroundColor:MALE_COLOR, borderRadius:3 },
-        { label:'女性', data:ageGroups.map(g=>g.f), backgroundColor:FEMALE_COLOR, borderRadius:3 }
-      ]
-    },
-    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{ position:'bottom' }, tooltip:{ callbacks:{ label: ctx=>` ${ctx.dataset.label}: ${Math.abs(ctx.raw)}名` } } },
-      scales:{ x:{ ticks:{ callback: v=>Math.abs(v) }, title:{ display:true,text:'人数' } }, y:{ ticks:{ font:{ size:11 } } } }
+  makeChart('ch-pyramid',{type:'bar',
+    data:{labels:ag.map(g=>g.label),datasets:[
+      {label:'男性',data:ag.map(g=>-g.m),backgroundColor:MALE_C,borderRadius:3},
+      {label:'女性',data:ag.map(g=>g.f),backgroundColor:FEMALE_C,borderRadius:3}
+    ]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${Math.abs(ctx.raw)}名`}}},
+      scales:{x:{ticks:{callback:v=>Math.abs(v)},title:{display:true,text:'人数'}},y:{ticks:{font:{size:11}}}}
     }
   });
 
-  // org2 stacked
-  const orgList = [...new Set(d.map(r=>r.org2).filter(Boolean))].sort();
-  const orgM = orgList.map(o=>count(d.filter(r=>r.org2===o),'gender','男性'));
-  const orgF = orgList.map(o=>count(d.filter(r=>r.org2===o),'gender','女性'));
-  makeChart('ch-org2', {
-    type:'bar',
-    data:{ labels:orgList,
-      datasets:[
-        { label:'男性', data:orgM, backgroundColor:MALE_COLOR, borderRadius:3 },
-        { label:'女性', data:orgF, backgroundColor:FEMALE_COLOR, borderRadius:3 }
-      ]
-    },
-    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{ position:'bottom' } },
-      scales:{ x:{ stacked:true, title:{ display:true,text:'人数' } }, y:{ stacked:true, ticks:{ font:{ size:11 } } } }
+  const orgList=[...new Set(d.map(r=>r.org2).filter(Boolean))].sort();
+  makeChart('ch-org2',{type:'bar',
+    data:{labels:orgList,datasets:[
+      {label:'男性',data:orgList.map(o=>cnt(d.filter(r=>r.org2===o),'gender','男性')),backgroundColor:MALE_C,borderRadius:3},
+      {label:'女性',data:orgList.map(o=>cnt(d.filter(r=>r.org2===o),'gender','女性')),backgroundColor:FEMALE_C,borderRadius:3}
+    ]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom'}},
+      scales:{x:{stacked:true,title:{display:true,text:'人数'}},y:{stacked:true,ticks:{font:{size:11}}}}
     }
   });
 
-  // grade
-  const gradeList = GRADE_ORDER.filter(g=>RAW.some(r=>r.grade===g));
-  const gradeM = gradeList.map(g=>count(d.filter(r=>r.grade===g),'gender','男性'));
-  const gradeF = gradeList.map(g=>count(d.filter(r=>r.grade===g),'gender','女性'));
-  makeChart('ch-grade', {
-    type:'bar',
-    data:{ labels:gradeList,
-      datasets:[
-        { label:'男性', data:gradeM, backgroundColor:MALE_COLOR, borderRadius:4 },
-        { label:'女性', data:gradeF, backgroundColor:FEMALE_COLOR, borderRadius:4 }
-      ]
-    },
-    options:{ responsive:true, maintainAspectRatio:true,
-      plugins:{ legend:{ position:'bottom' } },
-      scales:{ x:{ stacked:true }, y:{ stacked:true, title:{ display:true,text:'人数' } } }
-    }
+  const gl=GRADE_ORDER.filter(g=>RAW.some(r=>r.grade===g));
+  makeChart('ch-grade',{type:'bar',
+    data:{labels:gl,datasets:[
+      {label:'男性',data:gl.map(g=>cnt(d.filter(r=>r.grade===g),'gender','男性')),backgroundColor:MALE_C,borderRadius:4},
+      {label:'女性',data:gl.map(g=>cnt(d.filter(r=>r.grade===g),'gender','女性')),backgroundColor:FEMALE_C,borderRadius:4}
+    ]},
+    options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'bottom'}},scales:{x:{stacked:true},y:{stacked:true,title:{display:true,text:'人数'}}}}
   });
 
-  // position
-  const posList = [...new Set(d.map(r=>r.position).filter(Boolean))].sort((a,b)=>{
-    const order=['局長','部長','課長','課長補佐','事務員','養護職員'];
-    return (order.indexOf(a)+1||99)-(order.indexOf(b)+1||99);
-  });
-  const posCount = posList.map(p=>count(d,'position',p));
-  makeChart('ch-position', {
-    type:'bar',
-    data:{ labels:posList, datasets:[{ label:'人数', data:posCount, backgroundColor:ORG_COLORS, borderRadius:4 }] },
-    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:true,
-      plugins:{ legend:{ display:false } },
-      scales:{ x:{ title:{ display:true,text:'人数' } }, y:{ ticks:{ font:{ size:11 } } } }
-    }
+  const pl=[...new Set(d.map(r=>r.position).filter(Boolean))].sort((a,b)=>(posOrder.indexOf(a)+1||99)-(posOrder.indexOf(b)+1||99));
+  makeChart('ch-position',{type:'bar',
+    data:{labels:pl,datasets:[{label:'人数',data:pl.map(p=>cnt(d,'position',p)),backgroundColor:ORG_COLORS,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},scales:{x:{title:{display:true,text:'人数'}},y:{ticks:{font:{size:11}}}}}
   });
 
-  // hire year
-  const hireYears = d.map(r=>r.hire_year).filter(Boolean);
-  const minY = Math.min(...hireYears), maxY = Math.max(...hireYears);
-  const years = Array.from({length:maxY-minY+1},(_,i)=>minY+i);
-  const hireM = years.map(y=>d.filter(r=>r.hire_year===y&&r.gender==='男性').length);
-  const hireF = years.map(y=>d.filter(r=>r.hire_year===y&&r.gender==='女性').length);
-  makeChart('ch-hire', {
-    type:'bar',
-    data:{ labels:years,
-      datasets:[
-        { label:'男性', data:hireM, backgroundColor:MALE_COLOR },
-        { label:'女性', data:hireF, backgroundColor:FEMALE_COLOR }
-      ]
-    },
-    options:{ responsive:true, maintainAspectRatio:true,
-      plugins:{ legend:{ position:'bottom' } },
-      scales:{ x:{ stacked:true, ticks:{ maxRotation:45, font:{ size:10 } } }, y:{ stacked:true, title:{ display:true,text:'人数' } } }
-    }
-  });
+  const hy=d.map(r=>r.hire_year).filter(Boolean);
+  if(hy.length){
+    const minY=Math.min(...hy),maxY=Math.max(...hy);
+    const yrs=Array.from({length:maxY-minY+1},(_,i)=>minY+i);
+    makeChart('ch-hire',{type:'bar',
+      data:{labels:yrs,datasets:[
+        {label:'男性',data:yrs.map(y=>d.filter(r=>r.hire_year===y&&r.gender==='男性').length),backgroundColor:MALE_C},
+        {label:'女性',data:yrs.map(y=>d.filter(r=>r.hire_year===y&&r.gender==='女性').length),backgroundColor:FEMALE_C}
+      ]},
+      options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'bottom'}},scales:{x:{stacked:true,ticks:{maxRotation:45,font:{size:10}}},y:{stacked:true,title:{display:true,text:'人数'}}}}
+    });
+  }
 }
 
 update();
