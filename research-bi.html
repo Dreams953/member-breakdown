@@ -53,13 +53,10 @@
   .period-card .yr { display:flex; align-items:center; gap:6px; font-size:.8rem; color:#555; }
   .period-card select { font-family:inherit; font-size:.82rem; padding:3px 6px; border:1px solid #ddd; border-radius:5px; background:#fff; }
   .period-card .cnt { margin-left:auto; font-size:.74rem; color:#999; }
-  /* category toggles */
-  .cat-bar { padding:10px 24px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
-  .cat-toggles { display:flex; gap:12px; flex-wrap:wrap; }
-  .cat-chk { display:inline-flex; align-items:center; gap:7px; font-size:.9rem; font-weight:700; cursor:pointer; padding:6px 14px; border-radius:8px; border:1.5px solid #e3e6ec; user-select:none; }
-  .cat-chk input { width:17px; height:17px; cursor:pointer; }
-  .cat-chk .dot { width:11px; height:11px; border-radius:50%; display:inline-block; }
-  .cat-chk.cat-off { opacity:.4; }
+  /* mini legend (no line break within label) */
+  .mini-legend { display:flex; flex-wrap:wrap; gap:6px 16px; justify-content:center; margin-top:10px; }
+  .mini-legend span { display:inline-flex; align-items:center; gap:6px; font-size:.8rem; color:#555; white-space:nowrap; }
+  .mini-legend i { width:12px; height:12px; border-radius:3px; display:inline-block; flex-shrink:0; }
   /* layout */
   .container { padding:16px 24px; max-width:1640px; margin:0 auto; }
   .cards { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:16px; }
@@ -111,11 +108,6 @@
   </div>
 </div>
 
-<div class="bar cat-bar">
-  <span class="filter-label">表示カテゴリ</span>
-  <div id="cat-toggles" class="cat-toggles"></div>
-</div>
-
 <div class="bar period-wrap">
   <div class="period-title">項目別 対象年度（期間）</div>
   <div class="period-grid" id="period-grid"></div>
@@ -131,8 +123,8 @@
   </div>
 
   <div class="charts-grid">
-    <div class="chart-box"><h3>所属（学部）別 業績件数</h3><div class="chart-holder tall"><canvas id="ch-faculty"></canvas></div></div>
-    <div class="chart-box"><h3>年度別 業績推移</h3><div class="chart-holder tall"><canvas id="ch-trend"></canvas></div></div>
+    <div class="chart-box"><h3>所属（学部）別 業績件数</h3><div class="chart-holder tall"><canvas id="ch-faculty"></canvas></div><div class="mini-legend" id="lg-faculty"></div></div>
+    <div class="chart-box"><h3>年度別 業績推移</h3><div class="chart-holder tall"><canvas id="ch-trend"></canvas></div><div class="mini-legend" id="lg-trend"></div></div>
     <div class="chart-box"><h3>カテゴリ構成</h3><div class="chart-holder tall"><canvas id="ch-category"></canvas></div></div>
   </div>
 
@@ -248,40 +240,6 @@ function buildFilters(){
 
   populateRankTarget();
   buildPeriodControls();
-  buildCatToggles();
-}
-
-// チャートに表示するカテゴリのチェックボックス（期間カードと同期）
-function buildCatToggles(){
-  const wrap=document.getElementById('cat-toggles');
-  wrap.innerHTML='';
-  CATEGORIES.forEach(cat=>{
-    const lab=document.createElement('label');
-    lab.className='cat-chk';
-    lab.style.borderColor=CAT_COLOR[cat];
-    lab.innerHTML=`<input type="checkbox" checked><span class="dot" style="background:${CAT_COLOR[cat]}"></span>${cat}`;
-    const cb=lab.querySelector('input'); cb.style.accentColor=CAT_COLOR[cat];
-    cb.onchange=()=>setCatOn(cat, cb.checked);
-    wrap.appendChild(lab);
-  });
-}
-
-// カテゴリの表示ON/OFFを一括で切り替え、上部チェックと期間カードを同期
-function setCatOn(cat, on){
-  if(periodState[cat]) periodState[cat].on=on;
-  document.querySelectorAll('#period-grid .period-card').forEach(card=>{
-    if(card.dataset.cat===cat){
-      const pc=card.querySelector('.p-on'); if(pc) pc.checked=on;
-      card.classList.toggle('off', !on);
-    }
-  });
-  CATEGORIES.forEach((c,i)=>{
-    if(c===cat){
-      const lab=document.querySelectorAll('#cat-toggles .cat-chk')[i];
-      if(lab){ lab.querySelector('input').checked=on; lab.classList.toggle('cat-off', !on); }
-    }
-  });
-  update();
 }
 
 function refreshDepartmentOptions(){
@@ -307,14 +265,14 @@ function buildPeriodControls(){
     grid.appendChild(card);
     const fromSel=card.querySelector('.p-from'), toSel=card.querySelector('.p-to'), onCb=card.querySelector('.p-on');
     fromSel.value=YEAR_MIN; toSel.value=YEAR_MAX;
-    const updYears=()=>{
+    const upd=()=>{
       let f=+fromSel.value, t=+toSel.value;
       if(f>t){ [f,t]=[t,f]; fromSel.value=f; toSel.value=t; }
-      periodState[cat].from=f; periodState[cat].to=t;
+      periodState[cat]={from:f,to:t,on:onCb.checked};
+      card.classList.toggle('off', !onCb.checked);
       onFilterChange();
     };
-    fromSel.onchange=updYears; toSel.onchange=updYears;
-    onCb.onchange=()=>setCatOn(cat, onCb.checked);
+    fromSel.onchange=upd; toSel.onchange=upd; onCb.onchange=upd;
   });
 }
 
@@ -329,7 +287,6 @@ function resetFilters(){
     card.classList.remove('off');
     periodState[card.dataset.cat]={from:YEAR_MIN,to:YEAR_MAX,on:true};
   });
-  buildCatToggles();
   onFilterChange();
 }
 
@@ -446,9 +403,16 @@ function renderFacultyChart(people, ach){
     type:'bar',
     data:{ labels:facs, datasets },
     options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{position:'bottom'}},
+      plugins:{legend:{display:false}},
       scales:{ x:{stacked:true, beginAtZero:true}, y:{stacked:true, ticks:{font:{size:11}}} } }
   });
+  renderMiniLegend('lg-faculty', cats);
+}
+
+// 凡例の文字が途中で改行されない自前凡例
+function renderMiniLegend(id, cats){
+  const el=document.getElementById(id); if(!el) return;
+  el.innerHTML = cats.map(c=>`<span><i style="background:${CAT_COLOR[c]}"></i>${esc(c)}</span>`).join('');
 }
 
 function renderTrendChart(ach){
@@ -467,9 +431,10 @@ function renderTrendChart(ach){
     type:'line',
     data:{ labels:years, datasets },
     options:{ responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{position:'bottom'}},
+      plugins:{legend:{display:false}},
       scales:{ y:{beginAtZero:true} } }
   });
+  renderMiniLegend('lg-trend', cats);
 }
 
 function renderCategoryChart(byCat){
