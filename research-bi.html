@@ -53,6 +53,13 @@
   .period-card .yr { display:flex; align-items:center; gap:6px; font-size:.8rem; color:#555; }
   .period-card select { font-family:inherit; font-size:.82rem; padding:3px 6px; border:1px solid #ddd; border-radius:5px; background:#fff; }
   .period-card .cnt { margin-left:auto; font-size:.74rem; color:#999; }
+  /* category toggles */
+  .cat-bar { padding:10px 24px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .cat-toggles { display:flex; gap:12px; flex-wrap:wrap; }
+  .cat-chk { display:inline-flex; align-items:center; gap:7px; font-size:.9rem; font-weight:700; cursor:pointer; padding:6px 14px; border-radius:8px; border:1.5px solid #e3e6ec; user-select:none; }
+  .cat-chk input { width:17px; height:17px; cursor:pointer; }
+  .cat-chk .dot { width:11px; height:11px; border-radius:50%; display:inline-block; }
+  .cat-chk.cat-off { opacity:.4; }
   /* layout */
   .container { padding:16px 24px; max-width:1640px; margin:0 auto; }
   .cards { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:16px; }
@@ -102,6 +109,11 @@
     <div id="ms-position"></div>
     <button class="reset-btn" onclick="resetFilters()">リセット</button>
   </div>
+</div>
+
+<div class="bar cat-bar">
+  <span class="filter-label">表示カテゴリ</span>
+  <div id="cat-toggles" class="cat-toggles"></div>
 </div>
 
 <div class="bar period-wrap">
@@ -236,6 +248,40 @@ function buildFilters(){
 
   populateRankTarget();
   buildPeriodControls();
+  buildCatToggles();
+}
+
+// チャートに表示するカテゴリのチェックボックス（期間カードと同期）
+function buildCatToggles(){
+  const wrap=document.getElementById('cat-toggles');
+  wrap.innerHTML='';
+  CATEGORIES.forEach(cat=>{
+    const lab=document.createElement('label');
+    lab.className='cat-chk';
+    lab.style.borderColor=CAT_COLOR[cat];
+    lab.innerHTML=`<input type="checkbox" checked><span class="dot" style="background:${CAT_COLOR[cat]}"></span>${cat}`;
+    const cb=lab.querySelector('input'); cb.style.accentColor=CAT_COLOR[cat];
+    cb.onchange=()=>setCatOn(cat, cb.checked);
+    wrap.appendChild(lab);
+  });
+}
+
+// カテゴリの表示ON/OFFを一括で切り替え、上部チェックと期間カードを同期
+function setCatOn(cat, on){
+  if(periodState[cat]) periodState[cat].on=on;
+  document.querySelectorAll('#period-grid .period-card').forEach(card=>{
+    if(card.dataset.cat===cat){
+      const pc=card.querySelector('.p-on'); if(pc) pc.checked=on;
+      card.classList.toggle('off', !on);
+    }
+  });
+  CATEGORIES.forEach((c,i)=>{
+    if(c===cat){
+      const lab=document.querySelectorAll('#cat-toggles .cat-chk')[i];
+      if(lab){ lab.querySelector('input').checked=on; lab.classList.toggle('cat-off', !on); }
+    }
+  });
+  update();
 }
 
 function refreshDepartmentOptions(){
@@ -261,14 +307,14 @@ function buildPeriodControls(){
     grid.appendChild(card);
     const fromSel=card.querySelector('.p-from'), toSel=card.querySelector('.p-to'), onCb=card.querySelector('.p-on');
     fromSel.value=YEAR_MIN; toSel.value=YEAR_MAX;
-    const upd=()=>{
+    const updYears=()=>{
       let f=+fromSel.value, t=+toSel.value;
       if(f>t){ [f,t]=[t,f]; fromSel.value=f; toSel.value=t; }
-      periodState[cat]={from:f,to:t,on:onCb.checked};
-      card.classList.toggle('off', !onCb.checked);
+      periodState[cat].from=f; periodState[cat].to=t;
       onFilterChange();
     };
-    fromSel.onchange=upd; toSel.onchange=upd; onCb.onchange=upd;
+    fromSel.onchange=updYears; toSel.onchange=updYears;
+    onCb.onchange=()=>setCatOn(cat, onCb.checked);
   });
 }
 
@@ -283,6 +329,7 @@ function resetFilters(){
     card.classList.remove('off');
     periodState[card.dataset.cat]={from:YEAR_MIN,to:YEAR_MAX,on:true};
   });
+  buildCatToggles();
   onFilterChange();
 }
 
