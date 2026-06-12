@@ -132,7 +132,14 @@
     <div class="chart-box"><h3>学部別 1人あたり業績数（カテゴリ別）</h3><div class="chart-holder"><canvas id="ch-percapita"></canvas></div></div>
     <div class="chart-box"><h3>所属別 研究者数</h3><div class="chart-holder"><canvas id="ch-headcount"></canvas></div></div>
   </div>
-  <div class="hint">※ 「項目別 対象年度」で各カテゴリの集計期間を個別に変更できます。所属・職名フィルタは全カテゴリ共通です。</div>
+  <div class="chart-box" style="margin-top:16px;">
+    <h3 style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">研究者別 業績ランキング
+      <select id="rank-target" style="font-family:inherit; font-size:.82rem; padding:3px 8px; border:1px solid #ddd; border-radius:5px;"></select>
+      <span style="font-size:.72rem; color:#9aa; font-weight:400;">上位20名・所属/期間フィルタ連動</span>
+    </h3>
+    <div class="chart-holder tall"><canvas id="ch-ranking"></canvas></div>
+  </div>
+  <div class="hint">※ 「項目別 対象年度」で各カテゴリの集計期間を個別に変更できます。所属・職名フィルタは全カテゴリ共通です。ランキングの集計対象は上のプルダウンで切替（例：論文だけのランキング）。</div>
 </div>
 
 <script>
@@ -212,6 +219,7 @@ function buildFilters(){
   refreshDepartmentOptions();
   msPosition.setOptions(uniqueSorted(DATA.researchers.map(r=>r.position)));
 
+  populateRankTarget();
   buildPeriodControls();
 }
 
@@ -277,14 +285,18 @@ function selectedResearchers(){
   );
 }
 
+// 業績が、現在のカテゴリON/OFFと対象年度の条件を満たすか
+function passPeriod(a){
+  const st=periodState[a.category];
+  return !!st && st.on && a.year>=st.from && a.year<=st.to;
+}
+
 // 選択中の研究者の、各カテゴリの期間条件を満たす業績レコードを返す
 function selectedAchievements(researchers){
   const out=[];
   for(const r of researchers){
     for(const a of (r.achievements||[])){
-      const st=periodState[a.category];
-      if(!st || !st.on) continue;
-      if(a.year < st.from || a.year > st.to) continue;
+      if(!passPeriod(a)) continue;
       out.push({ ...a, faculty:r.faculty, department:r.department });
     }
   }
@@ -312,6 +324,46 @@ function update(){
   renderDepartmentChart(ach);
   renderPerCapitaChart(people, ach);
   renderHeadcountChart(people);
+  renderRankingChart(people);
+}
+
+// 集計対象プルダウンを構築（総業績 / カテゴリ / 種別）
+function populateRankTarget(){
+  const sel=document.getElementById('rank-target');
+  if(!sel) return;
+  const prev=sel.value;
+  const types=uniqueSorted(DATA.researchers.flatMap(r=>(r.achievements||[]).map(a=>a.type)));
+  let html='<option value="ALL">総業績（すべて）</option>';
+  html+=CATEGORIES.map(c=>`<option value="cat:${esc(c)}">${esc(c)}（全体）</option>`).join('');
+  html+=types.map(t=>`<option value="type:${esc(t)}">種別：${esc(t)}</option>`).join('');
+  sel.innerHTML=html;
+  if(prev && [...sel.options].some(o=>o.value===prev)) sel.value=prev;
+  sel.onchange=update;
+}
+
+function renderRankingChart(people){
+  const sel=document.getElementById('rank-target');
+  const target=sel ? sel.value : 'ALL';
+  const match=(a)=>{
+    if(target==='ALL') return true;
+    if(target.startsWith('cat:')) return a.category===target.slice(4);
+    if(target.startsWith('type:')) return a.type===target.slice(5);
+    return true;
+  };
+  const rows=people.map(r=>({
+    name:r.name||r.id, faculty:r.faculty||'',
+    c:(r.achievements||[]).filter(a=>passPeriod(a)&&match(a)).length
+  })).filter(x=>x.c>0).sort((a,b)=>b.c-a.c).slice(0,20);
+  makeChart('ch-ranking', {
+    type:'bar',
+    data:{ labels:rows.map(x=>x.name),
+      datasets:[{ label:'件数', data:rows.map(x=>x.c), backgroundColor:'#6366f1',
+        _fac:rows.map(x=>x.faculty) }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false},
+        tooltip:{ callbacks:{ afterLabel:(ctx)=>ctx.dataset._fac[ctx.dataIndex] } } },
+      scales:{ x:{beginAtZero:true}, y:{ticks:{font:{size:11}}} } }
+  });
 }
 
 function activeCats(){ return CATEGORIES.filter(c=>periodState[c] && periodState[c].on); }
