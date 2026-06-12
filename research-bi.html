@@ -137,7 +137,7 @@
       <select id="rank-target" style="font-family:inherit; font-size:.82rem; padding:3px 8px; border:1px solid #ddd; border-radius:5px;"></select>
       <span style="font-size:.72rem; color:#9aa; font-weight:400;">上位20名・所属/期間フィルタ連動</span>
     </h3>
-    <div class="chart-holder tall"><canvas id="ch-ranking"></canvas></div>
+    <div class="chart-holder" style="height:580px;"><canvas id="ch-ranking"></canvas></div>
   </div>
   <div class="hint">※ 「項目別 対象年度」で各カテゴリの集計期間を個別に変更できます。所属・職名フィルタは全カテゴリ共通です。ランキングの集計対象は上のプルダウンで切替（例：論文だけのランキング）。</div>
 </div>
@@ -154,6 +154,21 @@
 const CATEGORIES = ["研究業績","教育業績","社会貢献業績"];
 const CAT_COLOR = { "研究業績":"#6366f1", "教育業績":"#10b981", "社会貢献業績":"#f59e0b" };
 const PALETTE = ['#6366f1','#8b5cf6','#ec4899','#f43f5e','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6'];
+// 所属（学部）の表示順。ここに無い所属は末尾に五十音順で続く
+const FACULTY_ORDER = [
+  "理工学部","建築都市デザイン学部","情報工学部","環境学部","メディア情報学部",
+  "デザイン・データ科学部","都市生活学部","人間科学部",
+  "大学院総合理工学研究科","大学院情報データ科学研究科",
+  "大学院工学研究科（平成30年度より総合理工学研究科に名称変更）","大学院環境情報学研究科",
+  "共通教育部","総合研究所","国際センター",
+  "ナノ科学技術学際研究センター","世田谷キャンパス",
+];
+function orderFac(arr){
+  return [...arr].sort((a,b)=>{
+    const ia=FACULTY_ORDER.indexOf(a), ib=FACULTY_ORDER.indexOf(b);
+    return (ia<0?999:ia)-(ib<0?999:ib) || a.localeCompare(b,'ja');
+  });
+}
 
 let DATA = null;        // {meta, researchers}
 let RECORDS = [];       // フラット化した業績レコード（researcher情報付き）
@@ -214,7 +229,7 @@ function buildFilters(){
   msDepartment = new MultiSelect(mount('ms-department'), '学科', onFilterChange);
   msPosition = new MultiSelect(mount('ms-position'), '職名', onFilterChange);
 
-  const faculties = uniqueSorted(DATA.researchers.map(r=>r.faculty));
+  const faculties = orderFac(uniqueSorted(DATA.researchers.map(r=>r.faculty)));
   msFaculty.setOptions(faculties);
   refreshDepartmentOptions();
   msPosition.setOptions(uniqueSorted(DATA.researchers.map(r=>r.position)));
@@ -362,7 +377,7 @@ function renderRankingChart(people){
     options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{display:false},
         tooltip:{ callbacks:{ afterLabel:(ctx)=>ctx.dataset._fac[ctx.dataIndex] } } },
-      scales:{ x:{beginAtZero:true}, y:{ticks:{font:{size:11}}} } }
+      scales:{ x:{beginAtZero:true}, y:{ticks:{font:{size:11}, autoSkip:false}} } }
   });
 }
 
@@ -374,7 +389,7 @@ function makeChart(id, config){
 }
 
 function renderFacultyChart(people, ach){
-  const facs = uniqueSorted(people.map(r=>r.faculty));
+  const facs = orderFac(uniqueSorted(people.map(r=>r.faculty)));
   const cats = activeCats();
   const datasets = cats.map(cat=>({
     label:cat, backgroundColor:CAT_COLOR[cat],
@@ -445,7 +460,7 @@ function renderDepartmentChart(ach){
 }
 
 function renderPerCapitaChart(people, ach){
-  const facs = uniqueSorted(people.map(r=>r.faculty));
+  const facs = orderFac(uniqueSorted(people.map(r=>r.faculty)));
   const cats = activeCats();
   const head = Object.fromEntries(facs.map(f=>[f, people.filter(r=>r.faculty===f).length]));
   const datasets = cats.map(cat=>({
@@ -462,7 +477,7 @@ function renderPerCapitaChart(people, ach){
 }
 
 function renderHeadcountChart(people){
-  const facs = uniqueSorted(people.map(r=>r.faculty));
+  const facs = orderFac(uniqueSorted(people.map(r=>r.faculty)));
   makeChart('ch-headcount', {
     type:'bar',
     data:{ labels:facs, datasets:[{ label:'研究者数', data:facs.map(f=>people.filter(r=>r.faculty===f).length),
@@ -478,9 +493,10 @@ function ingest(data, isReal){
   const badge=document.getElementById('data-badge');
   badge.textContent = isReal ? `実データ ${data.researchers.length}名` : 'デモデータ';
   badge.className = isReal ? 'real' : 'demo';
-  // 年範囲を実データから決定
+  // 年範囲：選択欄の下限は2000年に固定。上限はデータの最大年
   const yrs = data.researchers.flatMap(r=>(r.achievements||[]).map(a=>a.year)).filter(y=>y>1900);
-  if(yrs.length){ YEAR_MIN=Math.min(...yrs); YEAR_MAX=Math.max(...yrs); }
+  YEAR_MIN = 2000;
+  YEAR_MAX = yrs.length ? Math.max(YEAR_MIN, Math.max(...yrs)) : 2025;
   document.getElementById('c-people-sub').textContent = `名（全${data.researchers.length}名中）`;
   // 既存UIをクリアして再構築
   ['ms-faculty','ms-department','ms-position'].forEach(id=>document.getElementById(id).innerHTML='');
