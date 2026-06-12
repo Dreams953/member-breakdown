@@ -23,7 +23,11 @@
 1. お手元のPCで収集スクリプトを実行して `data.json` を作成します。
    ```bash
    pip install requests beautifulsoup4
-   # 研究者ID一覧 ids.txt（1行1ID）を用意して実行
+   # (推奨) 所属一覧から全学を自動収集
+   python scraper.py --discover --out data.json
+   # まず1人で動作確認したいとき
+   python scraper.py --discover --limit 1 --out data.json
+   # 研究者ID(tchCd)一覧から収集したいとき（ids.txt は1行1ID）
    python scraper.py --ids ids.txt --out data.json
    ```
 2. `data.json` を `research-bi.html` と同じフォルダに置く、
@@ -31,8 +35,17 @@
    （`file://` で開くと自動読込が効かない場合があるため、ボタン読込が確実です）
 
 > ⚠️ 収集スクリプトは、対象サイトの利用規約・robots.txt を確認のうえ、
-> 低速・少回数でご利用ください。サイトのHTML構造が想定と異なる場合は
-> `scraper.py` の `parse_detail()` を実ページに合わせて調整してください。
+> 低速・少回数（既定で1秒間隔）でご利用ください。
+
+#### スクレイパが対応しているサイト構造
+- 業績はタブ（別ページ）に分かれています：
+  研究業績 `action=01` ／ 教育業績 `action=02` ／ 社会貢献業績 `action=04`
+- 各ページ内の `<table class="TBL-glist02">` を解析し、種別見出し（論文／MISC／
+  講演・口頭発表等／研究課題／産業財産権 …）・年（`YYYY年`）・タイトルを抽出します。
+- 所属一覧 `action=position` の学部コード（`Facultyk`）から研究者一覧を巡回します。
+- **学科（department）・職名（position）** は既定では空です。学部別の集計は機能します。
+  学科・職名まで必要な場合は、所属一覧の詳細展開ページ／基本情報ページ（`action=profile`）の
+  HTMLを共有いただければパースを追加できます。
 
 ## できること
 

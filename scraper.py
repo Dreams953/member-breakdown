@@ -12,21 +12,31 @@
 このサイトは自動アクセスをブロックする場合があります。必ずご自身の環境で、
 利用規約・robots.txt を確認のうえ、低速・少回数でご利用ください。
 
+サイト構造（実ページに基づく）
+------------------------------
+- 業績はタブ（別ページ）に分かれる:
+    研究業績   action=01   （論文 / MISC / 講演・口頭発表等 / 研究課題 / 産業財産権 ...）
+    教育業績   action=02
+    社会貢献   action=04
+  URL: Main.php?action=01&type=detail&tchCd=（研究者ID）
+- 各ページ内に <table class="TBL-glist02" id="gskXX"> が複数:
+    1行目 = 種別見出し(<th colspan>) 例「論文」
+    2行目 = 列ヘッダ
+    3行目以降 = データ行。年は「出版年月/発表年月日/研究期間/出願日」等の列に「YYYY年」
+- 所属一覧: action=position&type=form
+    学部に Facultyk コード（理工=001000, 情報工=003000, ...）。
+    POST(action=position, type=list, Facultyk=コード, cntno=100, offset=...) で
+    研究者一覧（tchCd リンク）を取得。
+
 使い方
 ------
   pip install requests beautifulsoup4
-  # (A) 研究者IDの一覧ファイル ids.txt（1行1ID, 例: 7000118）を用意して実行
-  python scraper.py --ids ids.txt --out data.json
-  # (B) 検索結果ページ等から自動収集を試す場合
+  # (A) 所属一覧から全学を自動収集（推奨）
   python scraper.py --discover --out data.json
+  # (B) 研究者IDの一覧ファイル ids.txt（1行1ID）から
+  python scraper.py --ids ids.txt --out data.json
   # 動作確認（1人だけ）
   python scraper.py --ids ids.txt --limit 1 --out data.json
-
-注意（要確認ポイント）
-----------------------
-detail ページの HTML 構造（見出し文言・表組み）が想定と違う場合は parse_detail() の
-ヒューリスティックを実ページに合わせて調整してください。サンプル HTML を共有いただければ
-こちらで確定版に仕上げます。
 """
 
 import argparse
@@ -34,13 +44,12 @@ import json
 import re
 import sys
 import time
-from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
 
 BASE = "https://www.risys.gl.tcu.ac.jp/"
-DETAIL_URL = BASE + "Main.php?action=01&tchCd={tid}&type=detail"
+MAIN = BASE + "Main.php"
 
 HEADERS = {
     "User-Agent": (
@@ -50,21 +59,31 @@ HEADERS = {
     "Accept-Language": "ja,en;q=0.8",
 }
 
-# 業績の大分類。サイト上の見出し文言に合わせて調整可。
-CATEGORY_KEYS = {
-    "研究業績": ["研究業績", "研究活動", "論文", "著書", "学会発表"],
-    "教育業績": ["教育業績", "教育活動", "担当授業", "担当科目"],
-    "社会貢献業績": ["社会貢献", "社会活動", "社会貢献業績"],
-}
+# 業績タブ（action）→ カテゴリ名
+ACTION_CATEGORY = {"01": "研究業績", "02": "教育業績", "04": "社会貢献業績"}
 
-YEAR_RE = re.compile(r"(19[5-9]\d|20\d\d)")  # 1950-2099 の西暦
+# 列ヘッダから「年の列」を見つけるためのキーワード
+DATE_HEAD = ["出版年", "発表年", "年月", "年度", "研究期間", "出願日", "登録日",
+             "発行日", "取得", "受賞", "期間", "日付", "実施", "時期", "年"]
+# 列ヘッダから「タイトルの列」を見つけるためのキーワード
+TITLE_HEAD = ["タイトル", "名称", "課題名", "題名", "科目", "事項", "件名",
+              "活動", "内容", "テーマ", "役割", "賞"]
+
+YEAR_RE = re.compile(r"((?:19|20)\d{2})\s*年")
 
 
-def fetch(session: requests.Session, url: str, retries: int = 3) -> str:
-    """URL を取得して HTML 文字列を返す。失敗時は指数バックオフでリトライ。"""
+def clean(s: str) -> str:
+    return re.sub(r"\s+", " ", (s or "").replace("\xa0", " ")).strip()
+
+
+def fetch(session: requests.Session, url: str, *, method="get", data=None, retries=4) -> str:
+    """URL を取得。失敗時は指数バックオフでリトライ。"""
     for attempt in range(retries):
         try:
-            resp = session.get(url, headers=HEADERS, timeout=30)
+            if method == "post":
+                resp = session.post(url, data=data, headers=HEADERS, timeout=30)
+            else:
+                resp = session.get(url, headers=HEADERS, timeout=30)
             resp.raise_for_status()
             resp.encoding = resp.apparent_encoding or "utf-8"
             return resp.text
@@ -75,144 +94,183 @@ def fetch(session: requests.Session, url: str, retries: int = 3) -> str:
     raise RuntimeError(f"取得に失敗しました: {url}")
 
 
-def classify(heading_text: str) -> str | None:
-    """見出し文言を大分類（研究/教育/社会貢献）に振り分ける。"""
-    for cat, keys in CATEGORY_KEYS.items():
-        if any(k in heading_text for k in keys):
-            return cat
-    return None
+# ----------------------------------------------------------------------
+# 所属一覧（discover）
+# ----------------------------------------------------------------------
+def get_faculty_codes(session: requests.Session) -> list[tuple[str, str]]:
+    """所属別検索フォームから (Facultykコード, 学部名) を取得。"""
+    html = fetch(session, MAIN + "?action=position&type=form")
+    pairs = []
+    # <a ... onclick="hidval('Facultyk','001000');...">理工学部</a>
+    for m in re.finditer(r"hidval\('Facultyk','(\d{6})'\)[^>]*>\s*([^<]+?)\s*</a>", html):
+        code, name = m.group(1), clean(m.group(2))
+        if code != "000000" and name:
+            pairs.append((code, name))
+    # 学部（学部・研究科）を優先順に（学部=00X000 を先頭へ）
+    pairs.sort(key=lambda p: (0 if p[0][1:3] != "00" else 0, p[0]))
+    return pairs
 
 
-def parse_detail(tid: str, html: str) -> dict:
-    """
-    研究者詳細ページから 所属・職名・業績一覧を抽出する。
+def list_researchers(session: requests.Session, facultyk: str, cntno=100, sleep=1.2) -> list[str]:
+    """1つの所属(Facultyk)に属する研究者の tchCd 一覧を取得（ページング対応）。"""
+    ids: list[str] = []
+    seen: set[str] = set()
+    offset = 0
+    while True:
+        data = {"action": "position", "type": "list", "Facultyk": facultyk,
+                "cntno": str(cntno), "offset": str(offset), "opid": "", "andor": ""}
+        html = fetch(session, MAIN, method="post", data=data)
+        page_ids = [t for t in re.findall(r"tchCd=(\d{6,})", html) if t != "0000000000"]
+        new = [t for t in page_ids if t not in seen]
+        for t in new:
+            seen.add(t)
+            ids.append(t)
+        # 次ページが無ければ終了
+        if len(set(page_ids)) < cntno or not new:
+            break
+        offset += cntno
+        time.sleep(sleep)
+    return ids
 
-    ヒューリスティック方針（実ページに合わせて調整可）:
-      1. 見出し(h1-h4, th, .title 等)を走査し、研究/教育/社会貢献のセクションを特定。
-      2. セクション配下の各行(li, tr, p)から西暦(4桁)と種別・タイトルを拾う。
-    """
+
+def discover(session: requests.Session, sleep=1.2) -> dict[str, str]:
+    """全所属を巡回し {tchCd: 学部名} を返す（最初に見つかった所属を採用）。"""
+    faculties = get_faculty_codes(session)
+    print(f"所属 {len(faculties)} 件: " + ", ".join(n for _, n in faculties), file=sys.stderr)
+    id_faculty: dict[str, str] = {}
+    for code, name in faculties:
+        ids = list_researchers(session, code, sleep=sleep)
+        print(f"  {name} ({code}): {len(ids)}名", file=sys.stderr)
+        for t in ids:
+            id_faculty.setdefault(t, name)
+        time.sleep(sleep)
+    return id_faculty
+
+
+# ----------------------------------------------------------------------
+# 業績ページの解析
+# ----------------------------------------------------------------------
+def find_col(headers: list[str], keywords: list[str], default=None):
+    for i, h in enumerate(headers):
+        if any(k in h for k in keywords):
+            return i
+    return default
+
+
+def parse_category_page(html: str, category: str) -> list[dict]:
+    """1カテゴリ(研究/教育/社会貢献)ページ内の全 TBL-glist02 テーブルを解析。"""
     soup = BeautifulSoup(html, "html.parser")
-    text_of = lambda el: el.get_text(" ", strip=True) if el else ""
+    out: list[dict] = []
+    for table in soup.select("table.TBL-glist02"):
+        section = None       # 種別（論文 等）
+        headers: list[str] | None = None
+        title_col = 1
+        date_col = None
+        for tr in table.find_all("tr"):
+            ths = tr.find_all("th", recursive=False)
+            tds = tr.find_all("td", recursive=False)
+            if ths and not tds:
+                if section is None and len(ths) == 1:
+                    section = clean(ths[0].get_text())
+                elif headers is None and len(ths) > 1:
+                    headers = [clean(th.get_text()) for th in ths]
+                    title_col = find_col(headers, TITLE_HEAD, default=1)
+                    date_col = find_col(headers, DATE_HEAD, default=None)
+                continue
+            if not tds:
+                continue
+            # データ行
+            cells = [clean(td.get_text()) for td in tds]
+            year = None
+            if date_col is not None and date_col < len(cells):
+                m = YEAR_RE.search(cells[date_col])
+                if m:
+                    year = int(m.group(1))
+            if year is None:  # フォールバック: 行内で最後に出てくる「YYYY年」
+                yrs = [int(x) for c in cells for x in YEAR_RE.findall(c)]
+                if yrs:
+                    year = yrs[-1]
+            if year is None:
+                continue
+            title = cells[title_col] if title_col < len(cells) else (cells[1] if len(cells) > 1 else "")
+            out.append({
+                "category": category,
+                "type": section or category,
+                "year": year,
+                "title": title[:200],
+            })
+    return out
 
-    # --- 氏名・所属・職名（要確認: ページ構造に応じて調整） ---
-    name = text_of(soup.find("h1")) or text_of(soup.find("title"))
-    name = re.sub(r"\s*\|.*$", "", name).strip()
 
-    faculty = department = position = ""
-    # 「所属」「職名」というラベルの近傍テキストを拾う一般的なパターン
-    for label, setter in (("所属", "faculty"), ("職名", "position"), ("職位", "position")):
-        node = soup.find(string=re.compile(label))
-        if node:
-            val = node.parent.find_next(string=True)
-            val = (val or "").strip()
-            if setter == "faculty" and val:
-                faculty = val
-            elif setter == "position" and val:
-                position = val
-
-    achievements = []
-    current_cat = None
-    # ドキュメント順に走査して、直近のカテゴリ見出しに紐づけて行を集める
-    for el in soup.find_all(["h2", "h3", "h4", "th", "tr", "li", "p", "dt", "dd"]):
-        t = el.get_text(" ", strip=True)
-        if not t:
-            continue
-        cat = classify(t)
-        if cat and len(t) < 40:  # 短いものは見出しとみなす
-            current_cat = cat
-            continue
-        if current_cat:
-            m = YEAR_RE.search(t)
-            if m:
-                achievements.append(
-                    {
-                        "category": current_cat,
-                        "type": guess_type(t, current_cat),
-                        "year": int(m.group(1)),
-                        "title": t[:200],
-                    }
-                )
-
+def scrape_researcher(session: requests.Session, tid: str, faculty="", sleep=1.0) -> dict:
+    """1人の研究者の 研究/教育/社会貢献 業績をまとめて取得。"""
+    name = ""
+    achievements: list[dict] = []
+    for action, category in ACTION_CATEGORY.items():
+        url = f"{MAIN}?action={action}&type=detail&tchCd={tid}"
+        html = fetch(session, url)
+        if not name:
+            soup = BeautifulSoup(html, "html.parser")
+            ttl = soup.find("p", class_="TTL-gform")
+            name = clean(ttl.get_text()).split("(")[0].strip() if ttl else ""
+        achievements.extend(parse_category_page(html, category))
+        time.sleep(sleep)
     return {
         "id": tid,
         "name": name,
         "faculty": faculty,
-        "department": department,
-        "position": position,
-        "url": DETAIL_URL.format(tid=tid),
+        "department": "",   # 学科は所属一覧の詳細展開で取得可能（必要なら拡張）
+        "position": "",     # 職名は基本情報(action=profile)で取得可能（必要なら拡張）
+        "url": f"{MAIN}?action=01&type=detail&tchCd={tid}",
         "achievements": achievements,
     }
 
 
-def guess_type(text: str, category: str) -> str:
-    """行テキストから業績の種別を推定。"""
-    table = {
-        "論文": "論文", "著書": "著書", "学会": "学会発表", "発表": "学会発表",
-        "特許": "特許", "授業": "担当授業科目", "科目": "担当授業科目",
-        "教科書": "教科書", "委員": "委員会・審議会", "講演": "講演",
-        "メディア": "メディア", "受賞": "受賞",
-    }
-    for k, v in table.items():
-        if k in text:
-            return v
-    return {"研究業績": "その他研究", "教育業績": "その他教育", "社会貢献業績": "その他社会貢献"}[category]
-
-
-def discover_ids(session: requests.Session) -> list[str]:
-    """
-    所属一覧/検索結果ページから tchCd を収集する。
-    ※ 検索結果ページの URL/フォーム構造はサイト依存のため、実ページに合わせて要調整。
-       現状はトップから detail へのリンクを拾う簡易版。
-    """
-    ids: set[str] = set()
-    html = fetch(session, BASE + "Main.php?action=top&type=form")
-    for href in re.findall(r"tchCd=(\d+)", html):
-        ids.add(href)
-    return sorted(ids)
-
-
+# ----------------------------------------------------------------------
 def main() -> None:
     ap = argparse.ArgumentParser(description="TCU 研究者業績スクレイパ")
     ap.add_argument("--ids", help="研究者ID一覧ファイル（1行1ID）")
-    ap.add_argument("--discover", action="store_true", help="サイトからIDを自動収集")
+    ap.add_argument("--discover", action="store_true", help="所属一覧から全学を自動収集")
     ap.add_argument("--out", default="data.json", help="出力JSONパス")
     ap.add_argument("--limit", type=int, default=0, help="先頭N件のみ処理（動作確認用）")
-    ap.add_argument("--sleep", type=float, default=1.5, help="リクエスト間隔(秒)")
+    ap.add_argument("--sleep", type=float, default=1.0, help="リクエスト間隔(秒)")
     args = ap.parse_args()
 
     session = requests.Session()
 
-    ids: list[str] = []
-    if args.ids:
+    id_faculty: dict[str, str] = {}
+    if args.discover:
+        print("所属一覧からIDを収集中 ...", file=sys.stderr)
+        id_faculty = discover(session, sleep=args.sleep)
+    elif args.ids:
         with open(args.ids, encoding="utf-8") as f:
-            ids = [ln.strip() for ln in f if ln.strip() and not ln.startswith("#")]
-    elif args.discover:
-        print("IDを自動収集中 ...", file=sys.stderr)
-        ids = discover_ids(session)
+            for ln in f:
+                ln = ln.strip()
+                if ln and not ln.startswith("#"):
+                    id_faculty[ln] = ""
     else:
-        ap.error("--ids か --discover のいずれかを指定してください")
+        ap.error("--discover か --ids のいずれかを指定してください")
 
+    ids = list(id_faculty)
     if args.limit:
         ids = ids[: args.limit]
     print(f"対象 {len(ids)} 名", file=sys.stderr)
 
     researchers = []
     for i, tid in enumerate(ids, 1):
-        url = DETAIL_URL.format(tid=tid)
-        print(f"[{i}/{len(ids)}] {tid}", file=sys.stderr)
+        print(f"[{i}/{len(ids)}] {tid} {id_faculty.get(tid, '')}", file=sys.stderr)
         try:
-            html = fetch(session, url)
-            rec = parse_detail(tid, html)
+            rec = scrape_researcher(session, tid, faculty=id_faculty.get(tid, ""), sleep=args.sleep)
             researchers.append(rec)
+            print(f"    業績 {len(rec['achievements'])} 件", file=sys.stderr)
         except Exception as e:  # noqa: BLE001
             print(f"  ! スキップ: {e}", file=sys.stderr)
-        time.sleep(args.sleep)
 
     out = {
         "meta": {
             "source": "東京都市大学 研究者情報データベース (https://www.risys.gl.tcu.ac.jp/)",
             "generatedAt": time.strftime("%Y-%m-%d"),
-            "categories": list(CATEGORY_KEYS.keys()),
+            "categories": list(ACTION_CATEGORY.values()),
             "count": len(researchers),
         },
         "researchers": researchers,
