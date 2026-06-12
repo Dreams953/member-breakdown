@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>研究業績 BIダッシュボード｜所属別 可視化</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Hiragino Kaku Gothic ProN","Meiryo",sans-serif; background:#f0f2f5; color:#1a1a2e; }
+  header { background:linear-gradient(135deg,#0f3460 0%,#16213e 100%); color:#fff; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 8px rgba(0,0,0,.3); flex-wrap:wrap; gap:8px; }
+  header h1 { font-size:1.2rem; font-weight:700; letter-spacing:.03em; }
+  header .src { font-size:.72rem; opacity:.75; }
+  #data-badge { font-size:.72rem; padding:3px 9px; border-radius:10px; margin-left:8px; font-weight:600; }
+  #data-badge.demo { background:#fde68a; color:#92400e; }
+  #data-badge.real { background:#bbf7d0; color:#166534; }
+  /* bars */
+  .bar { background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+  .filter-bar { padding:8px 24px 10px; }
+  .filter-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:4px 0; }
+  .filter-row + .filter-row { border-top:1px solid #f0f0f0; margin-top:6px; padding-top:8px; }
+  .filter-label { font-size:.78rem; color:#888; font-weight:700; white-space:nowrap; min-width:3.2em; }
+  .filter-sep { color:#9fb3d1; font-size:.9rem; padding:0 2px; }
+  .reset-btn { padding:6px 14px; background:#0f3460; color:#fff; border:none; border-radius:6px; font-size:.8rem; cursor:pointer; font-weight:600; margin-left:auto; }
+  .reset-btn:hover { background:#0b274a; }
+  .load-btn { padding:6px 12px; background:#fff; color:#0f3460; border:1px solid #0f3460; border-radius:6px; font-size:.78rem; cursor:pointer; font-weight:600; }
+  .load-btn:hover { background:#eef3fb; }
+  /* MultiSelect */
+  .ms-wrapper { position:relative; display:inline-block; }
+  .ms-btn { display:inline-flex; align-items:center; gap:4px; padding:5px 10px; border:1px solid #ddd; border-radius:6px; font-size:.82rem; background:#fff; cursor:pointer; white-space:nowrap; max-width:240px; font-family:inherit; color:#555; }
+  .ms-btn-text { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:190px; }
+  .ms-btn-arrow { color:#bbb; font-size:.65rem; flex-shrink:0; }
+  .ms-btn.ms-active { border-color:#0f3460; color:#0f3460; background:#eef3fb; }
+  .ms-btn.ms-active .ms-btn-arrow { color:#0f3460; }
+  .ms-dropdown { position:absolute; top:calc(100% + 4px); left:0; min-width:210px; max-width:320px; background:#fff; border:1px solid #e0e0e0; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,.13); z-index:9999; overflow:hidden; }
+  .ms-dropdown.ms-hidden { display:none; }
+  .ms-hd { display:flex; gap:6px; padding:7px 10px; border-bottom:1px solid #f0f0f0; background:#fafafa; }
+  .ms-hd button { font-size:.72rem; padding:2px 8px; border:1px solid #ddd; border-radius:4px; cursor:pointer; background:#fff; color:#555; font-family:inherit; }
+  .ms-hd button:hover { background:#efefef; }
+  .ms-items { max-height:260px; overflow-y:auto; }
+  .ms-item { display:flex; align-items:center; gap:8px; padding:7px 12px; cursor:pointer; font-size:.83rem; color:#333; }
+  .ms-item:hover { background:#eef3fb; }
+  .ms-item input[type=checkbox] { accent-color:#0f3460; flex-shrink:0; cursor:pointer; }
+  .ms-empty { padding:14px; font-size:.8rem; color:#bbb; text-align:center; }
+  /* period section */
+  .period-wrap { padding:8px 24px 12px; }
+  .period-title { font-size:.78rem; color:#888; font-weight:700; margin-bottom:6px; }
+  .period-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .period-card { border:1px solid #eef0f4; border-radius:8px; padding:10px 12px; }
+  .period-card.off { opacity:.45; }
+  .period-card h4 { font-size:.85rem; display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+  .period-card .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .period-card .yr { display:flex; align-items:center; gap:6px; font-size:.8rem; color:#555; }
+  .period-card select { font-family:inherit; font-size:.82rem; padding:3px 6px; border:1px solid #ddd; border-radius:5px; background:#fff; }
+  .period-card .cnt { margin-left:auto; font-size:.74rem; color:#999; }
+  /* layout */
+  .container { padding:16px 24px; max-width:1640px; margin:0 auto; }
+  .cards { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:16px; }
+  .card { background:#fff; border-radius:10px; padding:14px 18px; box-shadow:0 1px 4px rgba(0,0,0,.08); border-left:4px solid #0f3460; }
+  .card .lbl { font-size:.74rem; color:#888; font-weight:600; letter-spacing:.03em; }
+  .card .val { font-size:1.9rem; font-weight:800; color:#1a1a2e; margin-top:4px; }
+  .card .sub { font-size:.72rem; color:#aaa; margin-top:2px; }
+  .card.research { border-left-color:#6366f1; }
+  .card.education { border-left-color:#10b981; }
+  .card.social { border-left-color:#f59e0b; }
+  .card.per { border-left-color:#ec4899; }
+  .charts-grid { display:grid; grid-template-columns:2fr 2fr 1fr; gap:16px; margin-bottom:16px; }
+  .charts-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .chart-box { background:#fff; border-radius:10px; padding:16px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+  .chart-box h3 { font-size:.85rem; font-weight:700; color:#444; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #f0f0f0; }
+  .chart-holder { position:relative; height:300px; }
+  .chart-holder.tall { height:360px; }
+  .hint { font-size:.72rem; color:#9aa; margin-top:6px; }
+  @media (max-width:980px){
+    .cards{grid-template-columns:repeat(2,1fr);}
+    .charts-grid,.charts-grid2{grid-template-columns:1fr;}
+    .period-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>研究業績 BIダッシュボード<span id="data-badge" class="demo">デモデータ</span></h1>
+    <div class="src">出典：東京都市大学 研究者情報データベース（公開情報）／所属別 研究・教育・社会貢献 業績</div>
+  </div>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <label class="load-btn">data.json を読み込む
+      <input id="file-input" type="file" accept="application/json,.json" style="display:none;">
+    </label>
+  </div>
+</header>
+
+<div class="bar filter-bar">
+  <div class="filter-row">
+    <span class="filter-label">所属</span>
+    <div id="ms-faculty"></div>
+    <span class="filter-sep">›</span>
+    <div id="ms-department"></div>
+    <span class="filter-label" style="margin-left:12px;">職名</span>
+    <div id="ms-position"></div>
+    <button class="reset-btn" onclick="resetFilters()">リセット</button>
+  </div>
+</div>
+
+<div class="bar period-wrap">
+  <div class="period-title">項目別 対象年度（期間）</div>
+  <div class="period-grid" id="period-grid"></div>
+</div>
+
+<div class="container">
+  <div class="cards">
+    <div class="card"><div class="lbl">対象研究者数</div><div class="val" id="c-people">-</div><div class="sub" id="c-people-sub">名</div></div>
+    <div class="card research"><div class="lbl">研究業績</div><div class="val" id="c-research">-</div><div class="sub">件（選択期間）</div></div>
+    <div class="card education"><div class="lbl">教育業績</div><div class="val" id="c-education">-</div><div class="sub">件（選択期間）</div></div>
+    <div class="card social"><div class="lbl">社会貢献業績</div><div class="val" id="c-social">-</div><div class="sub">件（選択期間）</div></div>
+    <div class="card per"><div class="lbl">1人あたり総業績</div><div class="val" id="c-per">-</div><div class="sub">件 / 名</div></div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-box"><h3>所属（学部）別 業績件数</h3><div class="chart-holder tall"><canvas id="ch-faculty"></canvas></div></div>
+    <div class="chart-box"><h3>年度別 業績推移</h3><div class="chart-holder tall"><canvas id="ch-trend"></canvas></div></div>
+    <div class="chart-box"><h3>カテゴリ構成</h3><div class="chart-holder tall"><canvas id="ch-category"></canvas></div></div>
+  </div>
+
+  <div class="charts-grid2">
+    <div class="chart-box"><h3>業績種別 内訳</h3><div class="chart-holder"><canvas id="ch-type"></canvas></div></div>
+    <div class="chart-box"><h3>学科別 業績件数 Top15</h3><div class="chart-holder"><canvas id="ch-department"></canvas></div></div>
+  </div>
+  <div class="charts-grid2" style="margin-top:16px;">
+    <div class="chart-box"><h3>学部別 1人あたり業績数（カテゴリ別）</h3><div class="chart-holder"><canvas id="ch-percapita"></canvas></div></div>
+    <div class="chart-box"><h3>所属別 研究者数</h3><div class="chart-holder"><canvas id="ch-headcount"></canvas></div></div>
+  </div>
+  <div class="hint">※ 「項目別 対象年度」で各カテゴリの集計期間を個別に変更できます。所属・職名フィルタは全カテゴリ共通です。</div>
+</div>
+
+<script>
+/* ============================================================
+   研究業績 BIダッシュボード
+   - data.json があれば実データ、なければデモデータを表示
+   - データ仕様: { meta:{categories:[...]}, researchers:[
+        { id,name,faculty,department,position,url,
+          achievements:[ {category,type,year,title} ] } ] }
+   ============================================================ */
+
+const CATEGORIES = ["研究業績","教育業績","社会貢献業績"];
+const CAT_COLOR = { "研究業績":"#6366f1", "教育業績":"#10b981", "社会貢献業績":"#f59e0b" };
+const PALETTE = ['#6366f1','#8b5cf6','#ec4899','#f43f5e','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6'];
+
+let DATA = null;        // {meta, researchers}
+let RECORDS = [];       // フラット化した業績レコード（researcher情報付き）
+let charts = {};        // Chart.js インスタンス
+let YEAR_MIN = 2010, YEAR_MAX = 2025;
+
+/* ---------- MultiSelect コンポーネント ---------- */
+class MultiSelect {
+  constructor(mount, label, onChange) {
+    this.label = label; this.onChange = onChange; this.options = []; this.selected = new Set();
+    this.el = document.createElement('div'); this.el.className = 'ms-wrapper'; mount.appendChild(this.el);
+    this.render();
+    document.addEventListener('click', (e)=>{ if(!this.el.contains(e.target)) this.close(); });
+  }
+  setOptions(opts){
+    this.options = [...opts];
+    for(const s of [...this.selected]) if(!this.options.includes(s)) this.selected.delete(s);
+    this.render();
+  }
+  close(){ const d=this.el.querySelector('.ms-dropdown'); if(d) d.classList.add('ms-hidden'); }
+  render(){
+    const n=this.selected.size, total=this.options.length;
+    const txt = n===0 ? `${this.label}：すべて` : (n===1 ? [...this.selected][0] : `${this.label}：${n}件`);
+    this.el.innerHTML = `
+      <button class="ms-btn ${n?'ms-active':''}"><span class="ms-btn-text">${esc(txt)}</span><span class="ms-btn-arrow">▼</span></button>
+      <div class="ms-dropdown ms-hidden">
+        <div class="ms-hd"><button data-act="all">全選択</button><button data-act="clear">クリア</button></div>
+        <div class="ms-items">${
+          total===0 ? '<div class="ms-empty">該当なし</div>' :
+          this.options.map(o=>`<label class="ms-item"><input type="checkbox" ${this.selected.has(o)?'checked':''} value="${esc(o)}">${esc(o)}</label>`).join('')
+        }</div>
+      </div>`;
+    const btn=this.el.querySelector('.ms-btn'), dd=this.el.querySelector('.ms-dropdown');
+    btn.onclick=(e)=>{ e.stopPropagation(); document.querySelectorAll('.ms-dropdown').forEach(d=>{ if(d!==dd) d.classList.add('ms-hidden'); }); dd.classList.toggle('ms-hidden'); };
+    this.el.querySelectorAll('.ms-item input').forEach(cb=>{
+      cb.onclick=(e)=>{ e.stopPropagation(); cb.checked?this.selected.add(cb.value):this.selected.delete(cb.value); this.renderBtnOnly(); this.onChange(); };
+    });
+    this.el.querySelector('[data-act=all]').onclick=(e)=>{ e.stopPropagation(); this.options.forEach(o=>this.selected.add(o)); this.render(); this.onChange(); };
+    this.el.querySelector('[data-act=clear]').onclick=(e)=>{ e.stopPropagation(); this.selected.clear(); this.render(); this.onChange(); };
+  }
+  renderBtnOnly(){
+    const n=this.selected.size;
+    const txt = n===0 ? `${this.label}：すべて` : (n===1 ? [...this.selected][0] : `${this.label}：${n}件`);
+    const b=this.el.querySelector('.ms-btn'); b.classList.toggle('ms-active', n>0);
+    b.querySelector('.ms-btn-text').textContent = txt;
+  }
+  get value(){ return [...this.selected]; }
+}
+const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- フィルタ UI ---------- */
+let msFaculty, msDepartment, msPosition;
+const periodState = {}; // {category: {from, to, on}}
+
+function buildFilters(){
+  const mount = (id)=>document.getElementById(id);
+  msFaculty = new MultiSelect(mount('ms-faculty'), '学部', onFilterChange);
+  msDepartment = new MultiSelect(mount('ms-department'), '学科', onFilterChange);
+  msPosition = new MultiSelect(mount('ms-position'), '職名', onFilterChange);
+
+  const faculties = uniqueSorted(DATA.researchers.map(r=>r.faculty));
+  msFaculty.setOptions(faculties);
+  refreshDepartmentOptions();
+  msPosition.setOptions(uniqueSorted(DATA.researchers.map(r=>r.position)));
+
+  buildPeriodControls();
+}
+
+function refreshDepartmentOptions(){
+  const fac = msFaculty.value;
+  const pool = DATA.researchers.filter(r=> fac.length===0 || fac.includes(r.faculty));
+  msDepartment.setOptions(uniqueSorted(pool.map(r=>r.department)));
+}
+
+function buildPeriodControls(){
+  const grid = document.getElementById('period-grid');
+  const years = [];
+  for(let y=YEAR_MAX; y>=YEAR_MIN; y--) years.push(y);
+  grid.innerHTML = '';
+  CATEGORIES.forEach(cat=>{
+    periodState[cat] = { from:YEAR_MIN, to:YEAR_MAX, on:true };
+    const opts = years.map(y=>`<option value="${y}">${y}</option>`).join('');
+    const card = document.createElement('div');
+    card.className = 'period-card';
+    card.dataset.cat = cat;
+    card.innerHTML = `
+      <h4><input type="checkbox" class="p-on" checked><span class="dot" style="background:${CAT_COLOR[cat]}"></span>${cat}<span class="cnt"></span></h4>
+      <div class="yr"><select class="p-from">${opts}</select><span>〜</span><select class="p-to">${opts}</select></div>`;
+    grid.appendChild(card);
+    const fromSel=card.querySelector('.p-from'), toSel=card.querySelector('.p-to'), onCb=card.querySelector('.p-on');
+    fromSel.value=YEAR_MIN; toSel.value=YEAR_MAX;
+    const upd=()=>{
+      let f=+fromSel.value, t=+toSel.value;
+      if(f>t){ [f,t]=[t,f]; fromSel.value=f; toSel.value=t; }
+      periodState[cat]={from:f,to:t,on:onCb.checked};
+      card.classList.toggle('off', !onCb.checked);
+      onFilterChange();
+    };
+    fromSel.onchange=upd; toSel.onchange=upd; onCb.onchange=upd;
+  });
+}
+
+function resetFilters(){
+  msFaculty.selected.clear(); msFaculty.render();
+  msPosition.selected.clear(); msPosition.render();
+  refreshDepartmentOptions();
+  document.querySelectorAll('#period-grid .period-card').forEach(card=>{
+    card.querySelector('.p-from').value=YEAR_MIN;
+    card.querySelector('.p-to').value=YEAR_MAX;
+    card.querySelector('.p-on').checked=true;
+    card.classList.remove('off');
+    periodState[card.dataset.cat]={from:YEAR_MIN,to:YEAR_MAX,on:true};
+  });
+  onFilterChange();
+}
+
+function onFilterChange(){ refreshDepartmentOptions(); update(); }
+
+/* ---------- 集計ヘルパ ---------- */
+function uniqueSorted(arr){ return [...new Set(arr.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja')); }
+
+function selectedResearchers(){
+  const fac=msFaculty.value, dep=msDepartment.value, pos=msPosition.value;
+  return DATA.researchers.filter(r=>
+    (fac.length===0 || fac.includes(r.faculty)) &&
+    (dep.length===0 || dep.includes(r.department)) &&
+    (pos.length===0 || pos.includes(r.position))
+  );
+}
+
+// 選択中の研究者の、各カテゴリの期間条件を満たす業績レコードを返す
+function selectedAchievements(researchers){
+  const out=[];
+  for(const r of researchers){
+    for(const a of (r.achievements||[])){
+      const st=periodState[a.category];
+      if(!st || !st.on) continue;
+      if(a.year < st.from || a.year > st.to) continue;
+      out.push({ ...a, faculty:r.faculty, department:r.department });
+    }
+  }
+  return out;
+}
+
+/* ---------- 描画 ---------- */
+function update(){
+  const people = selectedResearchers();
+  const ach = selectedAchievements(people);
+
+  const byCat = Object.fromEntries(CATEGORIES.map(c=>[c,0]));
+  ach.forEach(a=>byCat[a.category]++);
+
+  document.getElementById('c-people').textContent = people.length;
+  document.getElementById('c-research').textContent = byCat['研究業績'].toLocaleString();
+  document.getElementById('c-education').textContent = byCat['教育業績'].toLocaleString();
+  document.getElementById('c-social').textContent = byCat['社会貢献業績'].toLocaleString();
+  document.getElementById('c-per').textContent = people.length ? (ach.length/people.length).toFixed(1) : '0';
+
+  renderFacultyChart(people, ach);
+  renderTrendChart(ach);
+  renderCategoryChart(byCat);
+  renderTypeChart(ach);
+  renderDepartmentChart(ach);
+  renderPerCapitaChart(people, ach);
+  renderHeadcountChart(people);
+}
+
+function activeCats(){ return CATEGORIES.filter(c=>periodState[c] && periodState[c].on); }
+
+function makeChart(id, config){
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), config);
+}
+
+function renderFacultyChart(people, ach){
+  const facs = uniqueSorted(people.map(r=>r.faculty));
+  const cats = activeCats();
+  const datasets = cats.map(cat=>({
+    label:cat, backgroundColor:CAT_COLOR[cat],
+    data: facs.map(f=> ach.filter(a=>a.faculty===f && a.category===cat).length)
+  }));
+  makeChart('ch-faculty', {
+    type:'bar',
+    data:{ labels:facs, datasets },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom'}},
+      scales:{ x:{stacked:true, beginAtZero:true}, y:{stacked:true, ticks:{font:{size:11}}} } }
+  });
+}
+
+function renderTrendChart(ach){
+  const cats = activeCats();
+  // 各カテゴリの選択期間の和集合を年軸に
+  let lo=YEAR_MAX, hi=YEAR_MIN;
+  cats.forEach(c=>{ lo=Math.min(lo,periodState[c].from); hi=Math.max(hi,periodState[c].to); });
+  if(lo>hi){ lo=YEAR_MIN; hi=YEAR_MAX; }
+  const years=[]; for(let y=lo;y<=hi;y++) years.push(y);
+  const datasets = cats.map(cat=>({
+    label:cat, borderColor:CAT_COLOR[cat], backgroundColor:CAT_COLOR[cat]+'33',
+    tension:.25, fill:false, pointRadius:2,
+    data: years.map(y=> ach.filter(a=>a.category===cat && a.year===y).length)
+  }));
+  makeChart('ch-trend', {
+    type:'line',
+    data:{ labels:years, datasets },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom'}},
+      scales:{ y:{beginAtZero:true} } }
+  });
+}
+
+function renderCategoryChart(byCat){
+  const cats = activeCats();
+  makeChart('ch-category', {
+    type:'doughnut',
+    data:{ labels:cats, datasets:[{ data:cats.map(c=>byCat[c]), backgroundColor:cats.map(c=>CAT_COLOR[c]) }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} }
+  });
+}
+
+function renderTypeChart(ach){
+  const counts={};
+  ach.forEach(a=>{ counts[a.type]=(counts[a.type]||0)+1; });
+  const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  makeChart('ch-type', {
+    type:'bar',
+    data:{ labels:entries.map(e=>e[0]), datasets:[{ label:'件数', data:entries.map(e=>e[1]),
+      backgroundColor: entries.map((_,i)=>PALETTE[i%PALETTE.length]) }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true}} }
+  });
+}
+
+function renderDepartmentChart(ach){
+  const counts={};
+  ach.forEach(a=>{ if(a.department) counts[a.department]=(counts[a.department]||0)+1; });
+  const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  makeChart('ch-department', {
+    type:'bar',
+    data:{ labels:entries.map(e=>e[0]), datasets:[{ label:'件数', data:entries.map(e=>e[1]), backgroundColor:'#3b82f6' }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}}, scales:{x:{beginAtZero:true}, y:{ticks:{font:{size:10}}}} }
+  });
+}
+
+function renderPerCapitaChart(people, ach){
+  const facs = uniqueSorted(people.map(r=>r.faculty));
+  const cats = activeCats();
+  const head = Object.fromEntries(facs.map(f=>[f, people.filter(r=>r.faculty===f).length]));
+  const datasets = cats.map(cat=>({
+    label:cat, backgroundColor:CAT_COLOR[cat],
+    data: facs.map(f=> head[f] ? +(ach.filter(a=>a.faculty===f && a.category===cat).length/head[f]).toFixed(2) : 0)
+  }));
+  makeChart('ch-percapita', {
+    type:'bar',
+    data:{ labels:facs, datasets },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom'}},
+      scales:{ x:{stacked:true, ticks:{font:{size:10}}}, y:{stacked:true, beginAtZero:true} } }
+  });
+}
+
+function renderHeadcountChart(people){
+  const facs = uniqueSorted(people.map(r=>r.faculty));
+  makeChart('ch-headcount', {
+    type:'bar',
+    data:{ labels:facs, datasets:[{ label:'研究者数', data:facs.map(f=>people.filter(r=>r.faculty===f).length),
+      backgroundColor:'#0f3460' }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true}, x:{ticks:{font:{size:10}}} } }
+  });
+}
+
+/* ---------- データ読み込み ---------- */
+function ingest(data, isReal){
+  DATA = data;
+  const badge=document.getElementById('data-badge');
+  badge.textContent = isReal ? `実データ ${data.researchers.length}名` : 'デモデータ';
+  badge.className = isReal ? 'real' : 'demo';
+  // 年範囲を実データから決定
+  const yrs = data.researchers.flatMap(r=>(r.achievements||[]).map(a=>a.year)).filter(y=>y>1900);
+  if(yrs.length){ YEAR_MIN=Math.min(...yrs); YEAR_MAX=Math.max(...yrs); }
+  document.getElementById('c-people-sub').textContent = `名（全${data.researchers.length}名中）`;
+  // 既存UIをクリアして再構築
+  ['ms-faculty','ms-department','ms-position'].forEach(id=>document.getElementById(id).innerHTML='');
+  buildFilters();
+  update();
+}
+
+document.getElementById('file-input').addEventListener('change', (e)=>{
+  const f=e.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ try{ ingest(JSON.parse(rd.result), true); }catch(err){ alert('JSONの読み込みに失敗しました: '+err.message); } };
+  rd.readAsText(f);
+});
+
+async function init(){
+  // data.json があれば実データ、無ければデモデータ
+  try{
+    const res = await fetch('data.json', {cache:'no-store'});
+    if(res.ok){ ingest(await res.json(), true); return; }
+  }catch(_){ /* file:// などでは fetch 不可 → デモへ */ }
+  ingest(generateDemo(), false);
+}
+
+/* ---------- デモデータ生成（実構造を模したダミー） ---------- */
+function generateDemo(){
+  // 簡易シード乱数
+  let seed=20260612; const rnd=()=>{ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296; };
+  const ri=(a,b)=>a+Math.floor(rnd()*(b-a+1));
+  const pick=arr=>arr[ri(0,arr.length-1)];
+
+  const FAC = {
+    "理工学部":["機械工学科","電気電子通信工学科","応用化学科","原子力安全工学科","自然科学科"],
+    "建築都市デザイン学部":["建築学科","都市工学科"],
+    "情報工学部":["情報科学科","知能情報工学科"],
+    "環境学部":["環境創生学科","環境経営システム学科"],
+    "メディア情報学部":["社会メディア学科","情報システム学科"],
+    "デザイン・データ科学部":["デザイン・データ科学科"],
+    "都市生活学部":["都市生活学科"],
+    "人間科学部":["児童学科"],
+  };
+  const POS=["教授","准教授","講師","助教"];
+  const TYPES={
+    "研究業績":["論文","著書","学会発表","特許","受賞"],
+    "教育業績":["担当授業科目","教科書","教育方法の実践"],
+    "社会貢献業績":["委員会・審議会","講演","メディア"],
+  };
+  const SURNAME=["佐藤","鈴木","高橋","田中","伊藤","渡辺","山本","中村","小林","加藤","吉田","山田","松本","井上","木村","林"];
+  const GIVEN=["健一","裕子","誠","明","直樹","愛","隆","真理","浩","彩","聡","洋一","奈緒"];
+
+  const researchers=[]; let tid=7000100;
+  for(const [fac,deps] of Object.entries(FAC)){
+    for(const dep of deps){
+      const n=ri(3,6);
+      for(let i=0;i<n;i++){
+        tid++;
+        const ach=[];
+        // カテゴリごとに件数の傾向を変える
+        const base={"研究業績":ri(8,40),"教育業績":ri(3,12),"社会貢献業績":ri(2,15)};
+        for(const cat of CATEGORIES){
+          for(let k=0;k<base[cat];k++){
+            // 近年に偏らせる
+            const y = 2025 - Math.floor(Math.pow(rnd(),1.6)*13); // 2012-2025
+            ach.push({ category:cat, type:pick(TYPES[cat]), year:y, title:`${cat}サンプル#${k+1}` });
+          }
+        }
+        researchers.push({
+          id:String(tid), name:`${pick(SURNAME)} ${pick(GIVEN)}`,
+          faculty:fac, department:dep, position:pick(POS),
+          url:`https://www.risys.gl.tcu.ac.jp/Main.php?action=01&tchCd=${tid}&type=detail`,
+          achievements:ach,
+        });
+      }
+    }
+  }
+  return { meta:{ source:"デモデータ（構造確認用）", categories:CATEGORIES }, researchers };
+}
+
+init();
+</script>
+</body>
+</html>

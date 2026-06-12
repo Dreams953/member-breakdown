@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "source": "東京都市大学 研究者情報データベース (https://www.risys.gl.tcu.ac.jp/)",
+    "note": "これはスキーマ確認用のサンプルです。実データは scraper.py で生成した data.json に置き換えてください。",
+    "generatedAt": "2026-06-12",
+    "categories": ["研究業績", "教育業績", "社会貢献業績"]
+  },
+  "researchers": [
+    {
+      "id": "7000118",
+      "name": "岡田 啓",
+      "nameEn": "OKADA Akira",
+      "faculty": "情報工学部",
+      "department": "情報科学科",
+      "position": "教授",
+      "url": "https://www.risys.gl.tcu.ac.jp/Main.php?action=01&tchCd=7000118&type=detail",
+      "achievements": [
+        { "category": "研究業績", "type": "論文", "year": 2023, "title": "サンプル論文タイトル" },
+        { "category": "研究業績", "type": "学会発表", "year": 2022, "title": "サンプル発表" },
+        { "category": "教育業績", "type": "担当授業科目", "year": 2023, "title": "情報通信工学" },
+        { "category": "社会貢献業績", "type": "委員会・審議会", "year": 2021, "title": "○○委員会 委員" }
+      ]
+    }
+  ]
+}
