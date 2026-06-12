@@ -45,7 +45,7 @@
   /* period section */
   .period-wrap { padding:8px 24px 12px; }
   .period-title { font-size:.78rem; color:#888; font-weight:700; margin-bottom:6px; }
-  .period-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .period-grid { display:grid; grid-template-columns:repeat(3,220px); gap:12px; justify-content:start; }
   .period-card { border:1px solid #eef0f4; border-radius:8px; padding:10px 12px; }
   .period-card.off { opacity:.45; }
   .period-card h4 { font-size:.85rem; display:flex; align-items:center; gap:6px; margin-bottom:8px; }
@@ -125,7 +125,7 @@
   <div class="charts-grid">
     <div class="chart-box"><h3>所属（学部）別 業績件数</h3><div class="chart-holder tall"><canvas id="ch-faculty"></canvas></div><div class="mini-legend" id="lg-faculty"></div></div>
     <div class="chart-box"><h3>年度別 業績推移</h3><div class="chart-holder tall"><canvas id="ch-trend"></canvas></div><div class="mini-legend" id="lg-trend"></div></div>
-    <div class="chart-box"><h3>カテゴリ構成</h3><div class="chart-holder tall"><canvas id="ch-category"></canvas></div></div>
+    <div class="chart-box"><h3>カテゴリ構成</h3><div class="chart-holder tall"><canvas id="ch-category"></canvas></div><div class="mini-legend" id="lg-category"></div></div>
   </div>
 
   <div class="charts-grid2">
@@ -442,8 +442,9 @@ function renderCategoryChart(byCat){
   makeChart('ch-category', {
     type:'doughnut',
     data:{ labels:cats, datasets:[{ data:cats.map(c=>byCat[c]), backgroundColor:cats.map(c=>CAT_COLOR[c]) }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} }
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
   });
+  renderMiniLegend('lg-category', cats);
 }
 
 function renderTypeChart(ach){

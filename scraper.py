@@ -202,10 +202,53 @@ def parse_category_page(html: str, category: str) -> list[dict]:
     return out
 
 
+def parse_profile(html: str) -> dict:
+    """基本情報(action=profile)ページから 氏名・学部・学科・職名を抽出。
+
+    所属は <table class="TBL-gform"> の「所属」行 <div class="divClass400"> に
+      「理工学部 機械工学科<br />大学院… 機械工学専攻<br />…」
+    のように記載される。1行目の先頭=学部、続き=学科 とみなす。
+    職名は「職名」行の値。
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    ttl = soup.find("p", class_="TTL-gform")
+    name = clean(ttl.get_text()).split("(")[0].strip() if ttl else ""
+
+    faculty = department = position = ""
+    table = soup.find("table", class_="TBL-gform")
+    if table:
+        for tr in table.find_all("tr"):
+            th = tr.find("th")
+            td = tr.find("td")
+            if not th or not td:
+                continue
+            label = clean(th.get_text())
+            if "所属" in label:
+                for br in td.find_all("br"):
+                    br.replace_with("\n")
+                lines = [clean(x) for x in td.get_text("\n").split("\n") if clean(x)]
+                if lines:
+                    parts = re.split(r"[\s　]+", lines[0], maxsplit=1)
+                    faculty = parts[0]
+                    department = parts[1].strip() if len(parts) > 1 else ""
+            elif "職名" in label:
+                position = clean(td.get_text())
+    return {"name": name, "faculty": faculty, "department": department, "position": position}
+
+
 def scrape_researcher(session: requests.Session, tid: str, faculty="", sleep=1.0) -> dict:
-    """1人の研究者の 研究/教育/社会貢献 業績をまとめて取得。"""
-    name = ""
+    """1人の研究者の 基本情報(所属/学科/職名) と 研究/教育/社会貢献 業績を取得。"""
+    # 基本情報（学部・学科・職名）
+    prof = {"name": "", "faculty": "", "department": "", "position": ""}
+    try:
+        phtml = fetch(session, f"{MAIN}?action=profile&type=detail&tchCd={tid}")
+        prof = parse_profile(phtml)
+        time.sleep(sleep)
+    except Exception as e:  # noqa: BLE001
+        print(f"    ! 基本情報の取得失敗: {e}", file=sys.stderr)
+
     achievements: list[dict] = []
+    name = prof["name"]
     for action, category in ACTION_CATEGORY.items():
         url = f"{MAIN}?action={action}&type=detail&tchCd={tid}"
         html = fetch(session, url)
@@ -218,9 +261,9 @@ def scrape_researcher(session: requests.Session, tid: str, faculty="", sleep=1.0
     return {
         "id": tid,
         "name": name,
-        "faculty": faculty,
-        "department": "",   # 学科は所属一覧の詳細展開で取得可能（必要なら拡張）
-        "position": "",     # 職名は基本情報(action=profile)で取得可能（必要なら拡張）
+        "faculty": prof["faculty"] or faculty,  # 基本情報優先、無ければ所属一覧の学部
+        "department": prof["department"],
+        "position": prof["position"],
         "url": f"{MAIN}?action=01&type=detail&tchCd={tid}",
         "achievements": achievements,
     }
