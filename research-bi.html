@@ -173,6 +173,23 @@ function orderFac(arr){
     return (ia<0?999:ia)-(ib<0?999:ib) || a.localeCompare(b,'ja');
   });
 }
+// 所属（学科）の表示順。ここに無い学科は末尾に五十音順で続く
+const DEPARTMENT_ORDER = [
+  "機械工学科","機械システム工学科","電気電子通信工学科","医用工学科","応用化学科","原子力安全工学科","自然科学科",
+  "建築学科","都市工学科",
+  "情報科学科","知能情報工学科",
+  "環境創生学科","環境経営システム学科",
+  "社会メディア学科","情報システム学科",
+  "デザイン・データ科学科",
+  "都市生活学科",
+  "人間科学科",
+];
+function orderDept(arr){
+  return [...arr].sort((a,b)=>{
+    const ia=DEPARTMENT_ORDER.indexOf(a), ib=DEPARTMENT_ORDER.indexOf(b);
+    return (ia<0?999:ia)-(ib<0?999:ib) || a.localeCompare(b,'ja');
+  });
+}
 
 let DATA = null;        // {meta, researchers}
 let RECORDS = [];       // フラット化した業績レコード（researcher情報付き）
@@ -245,7 +262,7 @@ function buildFilters(){
 function refreshDepartmentOptions(){
   const fac = msFaculty.value;
   const pool = DATA.researchers.filter(r=> fac.length===0 || fac.includes(r.faculty));
-  msDepartment.setOptions(uniqueSorted(pool.map(r=>r.department)));
+  msDepartment.setOptions(orderDept(uniqueSorted(pool.map(r=>r.department))));
 }
 
 function buildPeriodControls(){
@@ -351,7 +368,9 @@ function populateRankTarget(){
   const sel=document.getElementById('rank-target');
   if(!sel) return;
   const prev=sel.value;
-  const types=uniqueSorted(DATA.researchers.flatMap(r=>(r.achievements||[]).map(a=>a.type)));
+  // 種別の並び：「論文」を先頭に、以降は五十音順
+  const types=uniqueSorted(DATA.researchers.flatMap(r=>(r.achievements||[]).map(a=>a.type)))
+    .sort((a,b)=>(a==='論文'?0:1)-(b==='論文'?0:1));
   let html='<option value="ALL">総業績（すべて）</option>';
   html+=CATEGORIES.map(c=>`<option value="cat:${esc(c)}">${esc(c)}（全体）</option>`).join('');
   html+=types.map(t=>`<option value="type:${esc(t)}">種別：${esc(t)}</option>`).join('');
