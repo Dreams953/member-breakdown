@@ -190,6 +190,17 @@ function orderDept(arr){
     return (ia<0?999:ia)-(ib<0?999:ib) || a.localeCompare(b,'ja');
   });
 }
+// 職名の表示順。ここに無い職名は末尾に五十音順で続く
+const POSITION_ORDER = [
+  "教授","准教授","講師","助教","助手",
+  "特任教授","特任准教授","特任講師","教育講師","研究講師",
+];
+function orderPos(arr){
+  return [...arr].sort((a,b)=>{
+    const ia=POSITION_ORDER.indexOf(a), ib=POSITION_ORDER.indexOf(b);
+    return (ia<0?999:ia)-(ib<0?999:ib) || a.localeCompare(b,'ja');
+  });
+}
 
 let DATA = null;        // {meta, researchers}
 let RECORDS = [];       // フラット化した業績レコード（researcher情報付き）
@@ -253,7 +264,7 @@ function buildFilters(){
   const faculties = orderFac(uniqueSorted(DATA.researchers.map(r=>r.faculty)));
   msFaculty.setOptions(faculties);
   refreshDepartmentOptions();
-  msPosition.setOptions(uniqueSorted(DATA.researchers.map(r=>r.position)));
+  msPosition.setOptions(orderPos(uniqueSorted(DATA.researchers.map(r=>r.position))));
 
   populateRankTarget();
   buildPeriodControls();
