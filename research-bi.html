@@ -134,7 +134,7 @@
   </div>
   <div class="charts-grid2" style="margin-top:16px;">
     <div class="chart-box"><h3>学部別 1人あたり業績数（カテゴリ別）</h3><div class="chart-holder"><canvas id="ch-percapita"></canvas></div></div>
-    <div class="chart-box"><h3>所属別 研究者数</h3><div class="chart-holder"><canvas id="ch-headcount"></canvas></div></div>
+    <div class="chart-box"><h3 id="h-headcount">所属別 研究者数</h3><div class="chart-holder"><canvas id="ch-headcount"></canvas></div></div>
   </div>
   <div class="chart-box" style="margin-top:16px;">
     <h3 style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">研究者別 業績ランキング
@@ -509,11 +509,15 @@ function renderPerCapitaChart(people, ach){
 }
 
 function renderHeadcountChart(people){
-  const facs = orderFac(uniqueSorted(people.map(r=>r.faculty)));
+  // 学部が選択されているときは学科別、未選択（全学）のときは学部別
+  const byDept = msFaculty.value.length>0;
+  const labels = byDept ? orderDept(uniqueSorted(people.map(r=>r.department)))
+                        : orderFac(uniqueSorted(people.map(r=>r.faculty)));
+  const counts = labels.map(k => people.filter(r => (byDept? r.department : r.faculty)===k).length);
+  const h=document.getElementById('h-headcount'); if(h) h.textContent = byDept ? '学科別 研究者数' : '所属別 研究者数';
   makeChart('ch-headcount', {
     type:'bar',
-    data:{ labels:facs, datasets:[{ label:'研究者数', data:facs.map(f=>people.filter(r=>r.faculty===f).length),
-      backgroundColor:'#0f3460' }] },
+    data:{ labels, datasets:[{ label:'研究者数', data:counts, backgroundColor:'#0f3460' }] },
     options:{ responsive:true, maintainAspectRatio:false,
       plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true}, x:{ticks:{font:{size:10}}} } }
   });
