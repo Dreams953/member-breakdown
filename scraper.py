@@ -270,6 +270,28 @@ def scrape_researcher(session: requests.Session, tid: str, faculty="", sleep=1.0
 
 
 # ----------------------------------------------------------------------
+def debug_profile(session: requests.Session, tid: str) -> None:
+    """基本情報ページを取得し、解析の様子を表示する診断用。"""
+    url = f"{MAIN}?action=profile&type=detail&tchCd={tid}"
+    print(f"URL: {url}")
+    html = fetch(session, url)
+    print(f"HTML長: {len(html)} 文字")
+    print(f"'TBL-gform' を含む: {'TBL-gform' in html}")
+    print(f"'所属' を含む: {'所属' in html}")
+    print(f"'divClass400' を含む: {'divClass400' in html}")
+    soup = BeautifulSoup(html, "html.parser")
+    table = soup.find("table", class_="TBL-gform")
+    print(f"TBL-gform テーブル検出: {table is not None}")
+    if table:
+        for tr in table.find_all("tr")[:4]:
+            th = tr.find("th"); td = tr.find("td")
+            lab = clean(th.get_text()) if th else "(なし)"
+            val = clean(td.get_text(" ", strip=True))[:60] if td else "(なし)"
+            print(f"  行: [{lab}] = {val}")
+    print("解析結果:", parse_profile(html))
+
+
+# ----------------------------------------------------------------------
 def main() -> None:
     ap = argparse.ArgumentParser(description="TCU 研究者業績スクレイパ")
     ap.add_argument("--ids", help="研究者ID一覧ファイル（1行1ID）")
@@ -277,7 +299,12 @@ def main() -> None:
     ap.add_argument("--out", default="data.json", help="出力JSONパス")
     ap.add_argument("--limit", type=int, default=0, help="先頭N件のみ処理（動作確認用）")
     ap.add_argument("--sleep", type=float, default=1.0, help="リクエスト間隔(秒)")
+    ap.add_argument("--debug", metavar="TCHCD", help="指定IDの基本情報ページを診断表示して終了")
     args = ap.parse_args()
+
+    if args.debug:
+        debug_profile(requests.Session(), args.debug)
+        return
 
     session = requests.Session()
 
