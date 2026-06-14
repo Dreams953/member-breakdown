@@ -2,15 +2,48 @@
 
 様式2「個人票」（優秀研究賞 一次審査用集計表）を集約し、ブラウザ上でランキング表示するための一式です。
 
+> **事務局PCにPythonを入れられない場合は、ブラウザだけで完結する `award-tool.html`（後述）を使ってください。**
+> インストール不要・データは外部に送信されません。Python版（`aggregate_xlsx.py`）はバッチ処理向けの代替手段です。
+
 ## 構成
 
 | ファイル | 役割 |
 |---|---|
-| `aggregate_xlsx.py` | 提出された xlsx 群を読み、点数を抽出して `data_award.json` を出力 |
-| `award-ranking.html` | `data_award.json` を読み込み、フィルタ＆ランキング表示する画面 |
+| **`award-tool.html`** | **【推奨・Python不要】** これ1つを開くだけで「Excel集計＋ランキング表示」が完結 |
+| `aggregate_xlsx.py` | （代替）提出xlsx群を集計して `data_award.json` を出力するPythonスクリプト |
+| `award-ranking.html` | （旧）表示専用。`data_award.json` を読み込んで表示 |
 | `make_dummy.py` / `data_award.sample.json` | デモ用ダミーデータ |
+| `award-tool.src.html` / `build_award_tool.sh` / `vendor/` | `award-tool.html` の元ソースと再ビルド用 |
 
-## 使い方
+---
+
+## ★ 推奨：ブラウザ版 `award-tool.html`（インストール不要）
+
+1. **提出ファイルをフォルダに並べる**（所属はフォルダ名から判定）
+   ```
+   提出ルート/
+     理工学部/
+       機械工学科/
+         研究者まとめ.xlsx   ← ①タブ分割でも
+         佐藤太郎.xlsx        ← ②1人1ファイルでも、どちらも可
+     情報工学部/
+       情報科学科/
+         ...
+   ```
+2. **`award-tool.html` をダブルクリック**してブラウザで開く
+3. 右上 **「📁 提出フォルダを読み込む」** → 上記「提出ルート」フォルダを選択
+   → ブラウザ内だけで集計し、ランキングが表示されます
+4. 必要に応じて **「⬇ JSON保存」** で集計結果（`data_award.json`）を保存。
+   次回は **「📂 JSON読込」** で即表示できます。
+
+> - すべてローカル動作です。業績ファイルやJSONは外部に送信されません。
+> - 対応ブラウザ：Google Chrome / Microsoft Edge を推奨（フォルダ選択に対応）。
+> - 集計時に出る **「⚠ 要確認」** は記入漏れ・所属不明・氏名重複です。該当を直して再読込してください。
+
+---
+
+## （代替）Python版 `aggregate_xlsx.py`
+
 
 ```bash
 pip install openpyxl
