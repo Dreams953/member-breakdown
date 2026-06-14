@@ -146,6 +146,30 @@ const DEPT2FAC={
 function clean(v){ if(v==null) return ""; return String(v).replace(/ /g," ").replace(/\s+/g," ").trim(); }
 function num(v){ if(typeof v==="number") return v; if(v==null) return 0; const f=parseFloat(v); return isNaN(f)?0:f; }
 
+/* 表示順（指定の並び）。未知の値はこの後ろに五十音順で並ぶ。 */
+const FACULTY_ORDER=["理工学部","建築都市デザイン学部","情報工学部","環境学部","メディア情報学部",
+  "デザイン・データ学部","都市生活学部","人間科学部","大学院理工学研究科","大学院データ科学研究科",
+  "共通教育部","総合研究所","国際センター"];
+const DEPT_ORDER=["機械工学科","機械システム工学科","電気電子通信工学科","医用工学科","応用化学科",
+  "原子力安全工学科","自然科学科","建築学科","都市工学科","情報科学科","知能情報工学科",
+  "環境創生学科","環境経営システム学科","社会メディア学科","情報システム学科","デザイン・データ科学科",
+  "都市生活学科","人間科学科"];
+const POSITION_ORDER=["教授","准教授","講師","助教","助手","特任教授","特任准教授","特任講師",
+  "教育講師","研究講師"];
+// 指定順での位置を返す（完全一致＞最長部分一致＞未知）。「P（教授）」等の表記揺れも吸収。
+function orderIndex(val,order){
+  if(val==null||val==="") return order.length+1;
+  const v=String(val);
+  const ex=order.indexOf(v); if(ex>=0) return ex;
+  let best=-1,len=-1;
+  for(let i=0;i<order.length;i++){ if(v.includes(order[i])&&order[i].length>len){best=i;len=order[i].length;} }
+  return best>=0?best:order.length;
+}
+function cmpOrdered(a,b,order){
+  const d=orderIndex(a,order)-orderIndex(b,order);
+  return d!==0?d:String(a||"").localeCompare(String(b||""),'ja');
+}
+
 function mergeLookup(ws){
   const merges=ws['!merges']||[];
   return function(r,c){
@@ -260,12 +284,12 @@ function buildMetricOptions(){
   if(![...sel.options].some(o=>o.value===state.metric)) state.metric="total";
   sel.value=state.metric;
 }
-function uniqSorted(key){return [...new Set(DATA.map(r=>r[key]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja'));}
+function uniqSorted(key,order){return [...new Set(DATA.map(r=>r[key]).filter(Boolean))].sort((a,b)=>cmpOrdered(a,b,order));}
 function fieldOf(k){return k==="fac"?"faculty":k==="dept"?"department":"position";}
 function buildFilters(){
-  fillChk("facFilter","fac",uniqSorted("faculty"));
-  fillChk("deptFilter","dept",uniqSorted("department"));
-  fillChk("posFilter","pos",uniqSorted("position"));
+  fillChk("facFilter","fac",uniqSorted("faculty",FACULTY_ORDER));
+  fillChk("deptFilter","dept",uniqSorted("department",DEPT_ORDER));
+  fillChk("posFilter","pos",uniqSorted("position",POSITION_ORDER));
 }
 function fillChk(elId,stateKey,values){
   const el=document.getElementById(elId);
@@ -322,10 +346,10 @@ function render(){
   const sk=state.sortKey;
   view.sort((a,b)=>{
     let av,bv;
-    if(sk==="rank"){ if(state.scope!=="all"){const ga=a.faculty+a.department,gb=b.faculty+b.department;if(ga!==gb)return ga.localeCompare(gb,'ja');} av=a._rank;bv=b._rank; }
+    if(sk==="rank"){ if(state.scope!=="all"){const fc=cmpOrdered(a.faculty,b.faculty,FACULTY_ORDER);if(fc)return fc;const dc=cmpOrdered(a.department,b.department,DEPT_ORDER);if(dc)return dc;} av=a._rank;bv=b._rank; }
     else if(sk==="name") return a.name.localeCompare(b.name,'ja')*state.sortDir;
-    else if(sk==="dept") return (a.department||'').localeCompare(b.department||'','ja')*state.sortDir;
-    else if(sk==="pos") return (a.position||'').localeCompare(b.position||'','ja')*state.sortDir;
+    else if(sk==="dept") return cmpOrdered(a.department,b.department,DEPT_ORDER)*state.sortDir;
+    else if(sk==="pos") return cmpOrdered(a.position,b.position,POSITION_ORDER)*state.sortDir;
     else if(sk==="val"){av=a._val;bv=b._val;}
     else {av=a._rank;bv=b._rank;}
     return (av-bv)*state.sortDir;
