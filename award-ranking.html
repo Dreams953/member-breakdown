@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>優秀研究賞 ランキングビューア</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --line:#334155;
+    --txt:#e2e8f0; --mut:#94a3b8; --accent:#38bdf8; --accent2:#a78bfa;
+    --gold:#fbbf24; --silver:#cbd5e1; --bronze:#d97706;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"Hiragino Kaku Gothic ProN","Meiryo",sans-serif;
+       background:var(--bg);color:var(--txt);font-size:14px}
+  header{padding:16px 22px;background:linear-gradient(90deg,#1e293b,#0f172a);
+         border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0;font-weight:700}
+  header .sub{color:var(--mut);font-size:12px}
+  header .spacer{flex:1}
+  .filebtn{background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+           padding:7px 12px;border-radius:8px;cursor:pointer;font-size:12px}
+  .filebtn:hover{border-color:var(--accent)}
+  .layout{display:grid;grid-template-columns:280px 1fr;gap:0;min-height:calc(100vh - 60px)}
+  .side{background:var(--panel);border-right:1px solid var(--line);padding:18px;overflow:auto}
+  .main{padding:20px 24px;overflow:auto}
+  .grp{margin-bottom:20px}
+  .grp h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);
+          margin:0 0 8px;font-weight:700}
+  select,.chk-wrap{width:100%}
+  select{background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+         padding:8px;border-radius:8px;font-size:13px}
+  .chk-wrap{max-height:170px;overflow:auto;border:1px solid var(--line);border-radius:8px;
+            padding:6px 8px;background:var(--panel2)}
+  .chk{display:flex;align-items:center;gap:7px;padding:3px 2px;cursor:pointer;font-size:13px}
+  .chk input{accent-color:var(--accent)}
+  .chk .cnt{margin-left:auto;color:var(--mut);font-size:11px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .card .k{color:var(--mut);font-size:11px}
+  .card .v{font-size:22px;font-weight:700;margin-top:2px}
+  .toolbar{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .toolbar label{color:var(--mut);font-size:12px}
+  table{width:100%;border-collapse:collapse;background:var(--panel);border-radius:12px;overflow:hidden}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);font-size:13px}
+  th{background:var(--panel2);color:var(--mut);font-weight:600;cursor:pointer;user-select:none;white-space:nowrap}
+  th:hover{color:var(--txt)}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr:hover td{background:rgba(56,189,248,.06)}
+  .rank{font-weight:700;width:46px;text-align:center}
+  .rank.r1{color:var(--gold)} .rank.r2{color:var(--silver)} .rank.r3{color:var(--bronze)}
+  .bar{position:relative;height:18px;background:var(--panel2);border-radius:5px;min-width:120px}
+  .bar>span{position:absolute;left:0;top:0;bottom:0;border-radius:5px;
+            background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .pill{display:inline-block;padding:1px 8px;border-radius:999px;background:var(--panel2);
+        border:1px solid var(--line);color:var(--mut);font-size:11px}
+  .empty{color:var(--mut);padding:40px;text-align:center}
+  .hint{font-size:11px;color:var(--mut);margin-top:6px;line-height:1.5}
+</style>
+</head>
+<body>
+<header>
+  <h1>🏆 優秀研究賞 ランキングビューア</h1>
+  <span class="sub" id="metaInfo"></span>
+  <span class="spacer"></span>
+  <button class="filebtn" id="loadBtn">📂 data_award.json を読み込む</button>
+  <input type="file" id="fileInput" accept=".json" style="display:none">
+</header>
+
+<div class="layout">
+  <aside class="side">
+    <div class="grp">
+      <h3>ランキング対象</h3>
+      <select id="metricSel"></select>
+      <div class="hint">合計・部門・各項目で順位付けを切り替えられます。</div>
+    </div>
+    <div class="grp">
+      <h3>ランキング母集団</h3>
+      <select id="scopeSel">
+        <option value="all">全体で順位付け</option>
+        <option value="faculty">学部内で順位付け</option>
+        <option value="department">学科内で順位付け</option>
+      </select>
+      <div class="hint">学部単位／学科単位の表彰タイトルに対応。</div>
+    </div>
+    <div class="grp"><h3>学部</h3><div class="chk-wrap" id="facFilter"></div></div>
+    <div class="grp"><h3>学科</h3><div class="chk-wrap" id="deptFilter"></div></div>
+    <div class="grp"><h3>職位</h3><div class="chk-wrap" id="posFilter"></div></div>
+  </aside>
+
+  <main class="main">
+    <div class="cards" id="cards"></div>
+    <div class="toolbar">
+      <label>上位</label>
+      <select id="topN" style="width:auto">
+        <option value="0">全員</option>
+        <option value="3">3</option>
+        <option value="5">5</option>
+        <option value="10" selected>10</option>
+        <option value="20">20</option>
+      </select>
+      <span class="spacer" style="flex:1"></span>
+      <span class="pill" id="resultCount"></span>
+    </div>
+    <div id="tableWrap"></div>
+  </main>
+</div>
+
+<script>
+const DIVISIONS = ["論文部門","学術部門","アクティビティー部門"];
+let DATA = [];              // 全研究者
+let state = {
+  metric: "total", scope: "all", topN: 10,
+  fac: new Set(), dept: new Set(), pos: new Set(),
+  sortKey: "rank", sortDir: 1,
+};
+
+/* ---------- ダミーデータ（ファイル未読込時のデモ用） ---------- */
+const DUMMY = (()=>{
+  const FD={"理工学部":["機械工学科","電気電子通信工学科","応用化学科"],
+            "情報工学部":["情報科学科","知能情報工学科"],
+            "建築都市デザイン学部":["建築学科","都市工学科"]};
+  const POS=["教授","准教授","講師","助教"];
+  const SUR=["佐藤","鈴木","高橋","田中","伊藤","渡辺","山本","中村","小林","加藤","吉田","山田","松本","井上","木村"];
+  const GIV=["太郎","花子","一郎","美咲","健","由美","誠","彩","大輔","恵"];
+  const IK=["査読付ジャーナル件数 過去３年","査読付ジャーナル件数 過去５年","研究面での指標 Output",
+            "科研費 金額","受賞など（最大15点） 点数","運営・社会貢献など（①～⑨の合計が最大15点） 点数"];
+  let seed=42; const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280;};
+  const pick=a=>a[Math.floor(rnd()*a.length)];
+  const r=[];
+  for(const f in FD)for(const d of FD[f]){
+    const n=4+Math.floor(rnd()*5);
+    for(let i=0;i<n;i++){
+      const a=+(rnd()*60).toFixed(1),b=+(rnd()*50).toFixed(1),c=+(rnd()*40).toFixed(1);
+      const items={}; IK.forEach(k=>items[k]=+(rnd()*15).toFixed(1));
+      r.push({name:pick(SUR)+pick(GIV),faculty:f,department:d,position:pick(POS),
+        age:30+Math.floor(rnd()*35),total:+(a+b+c).toFixed(1),
+        divisions:{"論文部門":a,"学術部門":b,"アクティビティー部門":c},items});
+    }
+  }
+  return {meta:{source:"ダミーデータ（デモ）",count:r.length},researchers:r};
+})();
+
+/* ---------- 値取得 ---------- */
+function metricValue(r,key){
+  if(key==="total") return r.total||0;
+  if(r.divisions && key in r.divisions) return r.divisions[key]||0;
+  if(r.items && key in r.items) return r.items[key]||0;
+  return 0;
+}
+function metricLabel(key){
+  if(key==="total") return "合計";
+  return key;
+}
+
+/* ---------- 初期化 ---------- */
+function load(json){
+  DATA = (json.researchers||[]).map((r,i)=>({...r, _id:i}));
+  document.getElementById("metaInfo").textContent =
+    `${json.meta?.source||""} ／ ${DATA.length} 名`;
+  buildMetricOptions();
+  buildFilters();
+  render();
+}
+
+function buildMetricOptions(){
+  const sel=document.getElementById("metricSel");
+  const opts=[["total","合計（総合）"]];
+  DIVISIONS.forEach(d=>opts.push([d,"部門："+d]));
+  // データに現れる項目キーを収集
+  const itemKeys=new Set();
+  DATA.forEach(r=>Object.keys(r.items||{}).forEach(k=>itemKeys.add(k)));
+  [...itemKeys].forEach(k=>opts.push([k,"項目："+k]));
+  sel.innerHTML=opts.map(([v,l])=>`<option value="${v}">${l}</option>`).join("");
+  sel.value=state.metric;
+}
+
+function uniqSorted(key){
+  return [...new Set(DATA.map(r=>r[key]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ja'));
+}
+function buildFilters(){
+  fillChk("facFilter","fac",uniqSorted("faculty"));
+  fillChk("deptFilter","dept",uniqSorted("department"));
+  fillChk("posFilter","pos",uniqSorted("position"));
+}
+function fillChk(elId,stateKey,values){
+  const el=document.getElementById(elId);
+  el.innerHTML=values.map(v=>{
+    const cnt=DATA.filter(r=>r[stateKeyToField(stateKey)]===v).length;
+    return `<label class="chk"><input type="checkbox" value="${v}">
+            <span>${v}</span><span class="cnt">${cnt}</span></label>`;
+  }).join("")||'<span class="hint">データなし</span>';
+  el.querySelectorAll("input").forEach(cb=>cb.addEventListener("change",e=>{
+    const s=state[stateKey];
+    e.target.checked?s.add(e.target.value):s.delete(e.target.value);
+    if(stateKey==="fac") syncDeptByFaculty();
+    render();
+  }));
+}
+function stateKeyToField(k){return k==="fac"?"faculty":k==="dept"?"department":"position";}
+
+// 学部フィルタを変えたら、学科チェックの表示を学部に連動させる
+function syncDeptByFaculty(){
+  const el=document.getElementById("deptFilter");
+  const allowed = state.fac.size
+    ? new Set(DATA.filter(r=>state.fac.has(r.faculty)).map(r=>r.department))
+    : null;
+  el.querySelectorAll(".chk").forEach(lbl=>{
+    const v=lbl.querySelector("input").value;
+    const show = !allowed || allowed.has(v);
+    lbl.style.display = show?"flex":"none";
+    if(!show){ lbl.querySelector("input").checked=false; state.dept.delete(v); }
+  });
+}
+
+/* ---------- 抽出・順位付け ---------- */
+function filtered(){
+  return DATA.filter(r=>
+    (!state.fac.size  || state.fac.has(r.faculty)) &&
+    (!state.dept.size || state.dept.has(r.department)) &&
+    (!state.pos.size  || state.pos.has(r.position)));
+}
+function withRanks(rows){
+  // scope に応じてグループ内順位を計算
+  const groupKey = state.scope==="faculty" ? "faculty"
+                 : state.scope==="department" ? "department" : null;
+  const groups={};
+  rows.forEach(r=>{
+    const g=groupKey?r[groupKey]:"__all__";
+    (groups[g]=groups[g]||[]).push(r);
+  });
+  const out=[];
+  for(const g in groups){
+    const arr=groups[g].slice().sort((a,b)=>metricValue(b,state.metric)-metricValue(a,state.metric));
+    arr.forEach((r,i)=>out.push({...r,_rank:i+1,_groupSize:arr.length,
+      _val:metricValue(r,state.metric)}));
+  }
+  return out;
+}
+
+/* ---------- 描画 ---------- */
+function render(){
+  const rows=withRanks(filtered());
+  const maxVal=Math.max(1,...rows.map(r=>r._val));
+  // サマリーカード
+  const vals=rows.map(r=>r._val);
+  const avg=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length):0;
+  const cards=[
+    ["対象人数",rows.length+" 名"],
+    ["ランキング対象",metricLabel(state.metric)],
+    [metricLabel(state.metric)+" 平均",avg.toFixed(1)],
+    [metricLabel(state.metric)+" 最高",(vals.length?Math.max(...vals):0).toFixed(1)],
+  ];
+  document.getElementById("cards").innerHTML=cards.map(([k,v])=>
+    `<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
+
+  // 並び替え
+  let view=rows.slice();
+  const sk=state.sortKey;
+  view.sort((a,b)=>{
+    let av,bv;
+    if(sk==="rank"){av=a._rank;bv=b._rank; if(state.scope!=="all"){ // group then rank
+        const ga=a.faculty+a.department, gb=b.faculty+b.department;
+        if(ga!==gb) return ga.localeCompare(gb,'ja');}}
+    else if(sk==="name"){av=a.name;bv=b.name;return av.localeCompare(bv,'ja')*state.sortDir;}
+    else if(sk==="dept"){av=a.department;bv=b.department;return av.localeCompare(bv,'ja')*state.sortDir;}
+    else if(sk==="pos"){av=a.position;bv=b.position;return (av||'').localeCompare(bv||'','ja')*state.sortDir;}
+    else if(sk==="val"){av=a._val;bv=b._val;}
+    else {av=a._rank;bv=b._rank;}
+    return (av-bv)*state.sortDir;
+  });
+  if(state.topN>0 && state.scope==="all") view=view.slice(0,state.topN);
+
+  document.getElementById("resultCount").textContent=`表示 ${view.length} 件 / 該当 ${rows.length} 名`;
+
+  if(!view.length){document.getElementById("tableWrap").innerHTML=
+    '<div class="empty">該当する研究者がいません。フィルタを調整してください。</div>';return;}
+
+  const showGroup = state.scope!=="all";
+  const head=`<tr>
+    <th class="num" data-k="rank">順位</th>
+    <th data-k="name">氏名</th>
+    <th data-k="dept">学科</th>
+    <th data-k="pos">職位</th>
+    <th class="num" data-k="val">${metricLabel(state.metric)}</th>
+    <th>分布</th></tr>`;
+  const body=view.map(r=>{
+    const rk=r._rank, rkCls=rk<=3?`r${rk}`:"";
+    const medal=rk===1?"🥇":rk===2?"🥈":rk===3?"🥉":"";
+    const w=(r._val/maxVal*100).toFixed(1);
+    const grpTag=showGroup?` <span class="pill">${r.faculty||r.department}内 ${rk}/${r._groupSize}</span>`:"";
+    return `<tr>
+      <td class="rank ${rkCls}">${medal||rk}</td>
+      <td>${r.name}${showGroup?grpTag:""}</td>
+      <td>${r.department||""}</td>
+      <td>${r.position||""}</td>
+      <td class="num">${r._val.toFixed(1)}</td>
+      <td><div class="bar"><span style="width:${w}%"></span></div></td>
+    </tr>`;
+  }).join("");
+  document.getElementById("tableWrap").innerHTML=`<table><thead>${head}</thead><tbody>${body}</tbody></table>`;
+  document.querySelectorAll("th[data-k]").forEach(th=>th.addEventListener("click",()=>{
+    const k=th.dataset.k;
+    if(state.sortKey===k) state.sortDir*=-1; else {state.sortKey=k;state.sortDir=k==="val"?-1:1;}
+    render();
+  }));
+}
+
+/* ---------- イベント ---------- */
+document.getElementById("metricSel").addEventListener("change",e=>{state.metric=e.target.value;render();});
+document.getElementById("scopeSel").addEventListener("change",e=>{state.scope=e.target.value;render();});
+document.getElementById("topN").addEventListener("change",e=>{state.topN=+e.target.value;render();});
+document.getElementById("loadBtn").addEventListener("click",()=>document.getElementById("fileInput").click());
+document.getElementById("fileInput").addEventListener("change",e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{try{load(JSON.parse(rd.result));}catch(err){alert("JSON読み込みエラー: "+err.message);}};
+  rd.readAsText(f);
+});
+
+// 起動時：data_award.json があれば読む。なければダミー。
+fetch("data_award.json").then(r=>r.ok?r.json():Promise.reject()).then(load)
+  .catch(()=>load(DUMMY));
+</script>
+</body>
+</html>
