@@ -9,17 +9,18 @@
 ランキングBIツール用の data_award.json を出力します。
 
 前提（ヒアリングに基づく）
-  - 1ファイル = 1学科。ファイル内に研究者ごとのタブ（シート）。
-  - ファイルは1つのフォルダにまとめて置く。
-  - 所属（学科）はファイル名（拡張子なし）から取得。学部は学科→学部の対応表で補完。
+  - 提出形態は混在：①1ファイルに複数タブ（研究者ごと）／②1人1ファイル。両方を一括処理。
+  - ファイル内に所属情報は無く氏名のみ。よって所属はフォルダ階層から取得する。
+      推奨フォルダ構成:  ルート/<学部>/<学科>/*.xlsx
+  - 氏名は フォーム内セル(B2) → タブ名 → ファイル名 の順で補完。
   - 点数は Excel が計算済みの値（U列）をそのまま採用。
     → 各ファイルは Excel で開いて保存された（数式が計算済みの）状態である必要があります。
 
 使い方
   pip install openpyxl
-  python aggregate_xlsx.py --dir ./提出フォルダ --out data_award.json
+  python aggregate_xlsx.py --dir ./提出ルート --out data_award.json
   # 1ファイルの構造を確認したいとき
-  python aggregate_xlsx.py --debug "機械工学科.xlsx"
+  python aggregate_xlsx.py --debug "サンプル.xlsx"
 
 ※ 実データ（外部非公開）はお手元の環境でのみ処理してください。
 ※ 実ファイルのレイアウト差異があれば、--debug の出力を見て調整します。
@@ -161,9 +162,26 @@ def debug_file(path):
             print(f"    [{k}] = {v}")
 
 
+def affiliation_from_path(root, path):
+    """ルートからの相対パスで 学部/学科 を推定。
+
+    想定フォルダ構成（学部/学科/ファイル）:
+        root/理工学部/機械工学科/○○.xlsx
+    1階層しかない場合は学科とみなし DEPT2FAC で学部を補完。
+    """
+    rel = os.path.relpath(os.path.dirname(path), root)
+    parts = [] if rel in (".", "") else rel.split(os.sep)
+    if len(parts) >= 2:
+        return parts[0], parts[1]          # 学部, 学科
+    if len(parts) == 1:
+        dept = parts[0]
+        return DEPT2FAC.get(dept, ""), dept  # 学科のみ → 学部を補完
+    return "", ""                           # 直下＝所属不明
+
+
 def main():
     ap = argparse.ArgumentParser(description="様式2 個人票 集計")
-    ap.add_argument("--dir", help="提出ファイルを置いたフォルダ")
+    ap.add_argument("--dir", help="提出ルートフォルダ（配下を再帰探索）")
     ap.add_argument("--out", default="data_award.json", help="出力JSON")
     ap.add_argument("--debug", metavar="XLSX", help="1ファイルの構造を診断表示して終了")
     args = ap.parse_args()
@@ -174,18 +192,27 @@ def main():
     if not args.dir:
         ap.error("--dir か --debug を指定してください")
 
+    root = os.path.abspath(args.dir)
+    # 学部/学科 フォルダ配下の xlsx を再帰探索（①タブ分割・②ファイル分割を一括処理）
+    paths = []
+    for dirpath, _dirs, files in os.walk(root):
+        for fn in sorted(files):
+            if fn.lower().endswith((".xlsx", ".xlsm")) and not fn.startswith("~$"):
+                paths.append(os.path.join(dirpath, fn))
+    paths.sort()
+    print(f"対象ファイル {len(paths)} 件", file=sys.stderr)
+
     researchers = []
-    files = [f for f in sorted(os.listdir(args.dir))
-             if f.lower().endswith((".xlsx", ".xlsm")) and not f.startswith("~$")]
-    print(f"対象ファイル {len(files)} 件", file=sys.stderr)
-    for fn in files:
-        dept = os.path.splitext(fn)[0]  # ファイル名（拡張子なし）＝学科
-        fac = DEPT2FAC.get(dept, "")
-        path = os.path.join(args.dir, fn)
+    warnings = []
+    seen = {}  # (faculty,dept,name) -> 出現回数（重複検知）
+    for path in paths:
+        fac, dept = affiliation_from_path(root, path)
+        fn = os.path.basename(path)
         try:
             wb = openpyxl.load_workbook(path, data_only=True)
         except Exception as e:  # noqa: BLE001
             print(f"  ! 読み込み失敗 {fn}: {e}", file=sys.stderr)
+            warnings.append(f"読み込み失敗: {os.path.relpath(path, root)} ({e})")
             continue
         cnt = 0
         for ws in wb.worksheets:
@@ -194,25 +221,46 @@ def main():
             rec = parse_sheet(ws)
             if not rec["name"] and not rec["total"]:
                 continue  # 空シートはスキップ
+            # 氏名: フォーム内セル → タブ名 → ファイル名 の順で補完
+            name_src = "cell"
+            if not rec["name"]:
+                rec["name"] = ws.title
+                name_src = "tab"
+            if not rec["name"] or rec["name"] == "様式2 (個人票)":
+                rec["name"] = os.path.splitext(fn)[0]
+                name_src = "file"
             rec["faculty"] = fac
             rec["department"] = dept
-            if not rec["name"]:
-                rec["name"] = ws.title  # 氏名が空ならシート名で代用
+            rec["_source"] = f"{os.path.relpath(path, root)} [{ws.title}]"
+            rec["_name_src"] = name_src
+            if not fac and not dept:
+                warnings.append(f"所属不明（フォルダ直下）: {rec['name']} ← {rec['_source']}")
+            key = (fac, dept, rec["name"])
+            seen[key] = seen.get(key, 0) + 1
             researchers.append(rec)
             cnt += 1
-        print(f"  {fn} → {cnt} 名", file=sys.stderr)
+        print(f"  {os.path.relpath(path, root)} → {cnt} 名", file=sys.stderr)
+
+    for key, n in seen.items():
+        if n > 1:
+            warnings.append(f"氏名重複（同姓同名/二重提出の可能性 {n}件）: {key[2]}（{key[1]}）")
 
     out = {
         "meta": {
             "source": "様式2 個人票（優秀研究賞一次審査用集計表）",
             "divisions": DIVISIONS,
             "count": len(researchers),
+            "warnings": warnings,
         },
         "researchers": researchers,
     }
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=2)
     print(f"書き出し完了: {args.out}（{len(researchers)} 名）", file=sys.stderr)
+    if warnings:
+        print(f"\n⚠ 要確認 {len(warnings)} 件:", file=sys.stderr)
+        for w in warnings:
+            print(f"  - {w}", file=sys.stderr)
 
 
 if __name__ == "__main__":
