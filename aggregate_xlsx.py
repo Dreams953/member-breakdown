@@ -235,6 +235,8 @@ def main():
             rec["_name_src"] = name_src
             if not fac and not dept:
                 warnings.append(f"所属不明（フォルダ直下）: {rec['name']} ← {rec['_source']}")
+            if name_src != "cell":
+                warnings.append(f"氏名セル(B2)未記入→{name_src}で代用: {rec['name']} ← {rec['_source']}")
             key = (fac, dept, rec["name"])
             seen[key] = seen.get(key, 0) + 1
             researchers.append(rec)
